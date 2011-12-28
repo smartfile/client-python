@@ -1,4 +1,4 @@
-SmartFile API Client (JavaScript)
+SmartFile API Client (Python)
 =======
 
 About
