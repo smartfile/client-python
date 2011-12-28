@@ -16,7 +16,7 @@ class SmartFileException(Exception):
 
 # This function does the bulk of the work by performing
 # the HTTP request and raising an exception for any HTTP
-# status code other than 201.
+# status code that does not signify success for the operation.
 def http_request(uri, data, method):
     url = '%s%s' % (API_URL, uri)
     url_parts = urlparse.urlparse(url)
@@ -43,7 +43,10 @@ def http_request(uri, data, method):
         conn.endheaders()
     resp = conn.getresponse()
 
-    if resp.status == 201:
+    if (method == 'GET' and resp.status == 200) or \
+        (method == 'POST' and resp.status == 201) or \
+        (method == 'PUT' and resp.status == 200) or \
+        (method == 'DELETE' and resp.status == 204):
         return
     message = resp.read()
     try:
@@ -65,6 +68,13 @@ def create_user(fullname, username, password, email):
         'email':        email,
     }
     http_request('/users/add/', data, 'POST')
+
+# This function makes the User add API call. It uses the http_request
+# function to handle the transport. Additional API calls could be supported
+# simply by writing additional wrappers that create the data dict and
+# use http_request to do the grunt work.
+def delete_user(username):
+    http_request('/users/delete/{0}/'.format(username), {}, 'DELETE')
 
 def main():
     # Ask the user for the required parameters. These will be
