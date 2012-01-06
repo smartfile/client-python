@@ -1,192 +1,49 @@
-"""Simple XML marshaling (serializing) and
-  unmarshaling(de-serializing) module using Python
-  dictionaries and the marshal module.
-"""
-
+from xml.dom.minidom import Document
 from xml.sax.handler import ContentHandler
-from xml.sax.saxutils import XMLGenerator
-from xml.sax.xmlreader import XMLReader
-from xml.sax import make_parser
-import marshal
-import os,sys,zlib
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from xml.sax import parseString
 
-class XMLDictionaryHandler(ContentHandler):
-    """SAX Handler class which converts an XML
-    file to a corresponding Python dictionary """
 
+class XmlDictHandler(ContentHandler):
     def __init__(self):
-        self.curr=''
-        self.parent=''
-        self.count=0
-        self.d = {}
-        self.currd = {}
-        self.parentd = {}
-        self.stack = []
-        self.stack2 = []
+        self.dict = {}
 
     def startElement(self, name, attrs):
-        """ Start element handler """
-        if self.count==0:
-            self.parent=name
-            self.d[name] = [dict(attrs),
-                            '',
-                            []]
-            self.currd = self.d
-        else:
-            chld={name: [dict(attrs),
-                         '',
-                         [] ]}
-            self.parent = self.stack[-1]
-            self.parentd = self.stack2[-1]
-
-            chldlist = (self.parentd[self.parent])[2]
-            chldlist.append(chld)
-            self.currd = chld
-
-        self.stack.append(name)
-        self.stack2.append(self.currd)
-
-        self.curr=name
-        self.count += 1
+        pass
 
     def endElement(self, name):
-        """ End element handler """
-        self.stack.remove(name)
-        for item in self.stack2:
-            if item.has_key(name):
-                self.stack2.remove(item)
+        pass
 
     def characters(self, content):
-        """ Character handler """
-        content = (content.encode('utf-8')).strip()
+        pass
 
-        if content:
-            myd=((self.parentd[self.parent])[2])[-1]
-            currcontent = (myd[self.curr])[1]
-            (myd[self.curr])[1] = "".join((currcontent, content))
 
-    def endDocument(self):
-        """ End document handler """
-        # Compress all text items
-        self.packtext(self.d)
+class XmlToDict(object):
+    def __init__(self, xml):
+        self.xml = xml
 
-    def packtext(self, map):
-        for key, value in map.items():
-            text = value[1]
-            value[1] = zlib.compress(text)
-            children = value[2]
-            for submap in children:
-                self.packtext(submap)
+    def as_dict(self):
+        h = XmlDictHandler()
+        parseString(self.xml, h)
+        return h.dict
 
-class BinXMLSAXParser(XMLReader):
-    """A parser for Python binary marshal files representing
-    XML information using SAX interfaces """
 
-    def __init__(self):
-        XMLReader.__init__(self)
-        self.depth = 0
+class DictToXml(object):
+    def __init__(self, dict, root=None):
+        self.doc = Document()
+        self.dict = dict
+        if root is None:
+            if len(dict) != 1:
+                raise Exception('No root element provided and dict contains more than one key')
+            root = dict.keys()[0]
+        self.root = self.doc.createElement(root)
+        self.doc.appendChild(self.root)
 
-    def parse(self, stream):
-        """ Parse Method """
-        # Check if it is a file object
-        if type(stream) is file:
-            try:
-                self.d = marshal.load(stream)
-            except Exception, e:
-                sys.exit(e)
+    def as_xml(self):
+        return self.doc.toxml()
 
-        # Check if it is a file path
-        elif os.path.exists(stream):
-            try:
-                self.d = marshal.load(open(stream,'rb'))
-            except Exception, e:
-                sys.exit(e)
-        else:
-            raise 'BinXMLSAXParserException: Invalid Input Source'
 
-        self._cont_handler.startDocument()
-        self.__parse(self.d)
-        self._cont_handler.endDocument()
+def dumps(s):
+    return DictToXml(s).as_xml()
 
-    def __parse(self, map):
-        """ Recursive parse method for
-        XML dictionary """
-
-        for key, value in map.items():
-            # For pretty printing
-            self._cont_handler.ignorableWhitespace(" "*self.depth)
-            attrs = value[0]
-            text = value[1]
-            children = value[2]
-            # Fire startElement handler event for key
-            self._cont_handler.startElement(key, attrs)
-            # Fire character handler event for value
-            self._cont_handler.characters(zlib.decompress(text))
-            # Nested element, recursively call
-            # this function...
-            self.depth += 1
-            # For pretty printing
-            self._cont_handler.ignorableWhitespace('\n')
-            for child in children:
-                self.__parse(child)
-            self.depth -= 1
-            # For pretty printing
-            self._cont_handler.ignorableWhitespace(" "*self.depth)
-            # Fire end element handler event
-            self._cont_handler.endElement(key)
-            # For pretty printing
-            self._cont_handler.ignorableWhitespace('\n')
-
-def dump(stream, xmlfile):
-    """ Serialize XML data to a file """
-    try:
-        p=make_parser()
-        h = XMLDictionaryHandler()
-        p.setContentHandler(h)
-        p.parse(open(xmlfile))
-        # print h.d
-        marshal.dump(h.d, stream)
-    except Exception, e:
-        sys.exit(e)
-
-def dumps(stream, xmlfile):
-    """ Serialize XML data to a string """
-    try:
-        p=make_parser()
-        p.setContentHandler()
-        h = XMLDictionaryHandler()
-        p.parse(open(xmlfile))
-        return marshal.dumps(h.d, stream)
-    except Exception, e:
-        sys.exit(e)
-
-    return None
-
-def load(stream, out=sys.stdout):
-    """ Load an XML binary stream
-    and send XML text to the output
-    stream 'out' """
-    try:
-        p=BinXMLSAXParser()
-        p.setContentHandler(XMLGenerator(out))
-        p.parse(stream)
-    except Exception, e:
-        sys.exit(e)
-
-def loads(stream):
-    """ Load an XML binary stream
-    and return XML text as string """
-    c=StringIO()
-    try:
-        p=BinXMLSAXParser()
-        p.setContentHandler(XMLGenerator(c))
-        p.parse(stream)
-    except Exception, e:
-        sys.exit(e)
-
-    return c.getvalue()
-
+def loads(s):
+    return XmlToDict(s).as_dict()
