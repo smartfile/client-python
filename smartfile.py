@@ -1,7 +1,15 @@
 #!/usr/bin/python
 
-import httplib, base64, simplejson, simplexml, hmac
-import optparse, datetime, pprint, requests
+import base64
+import datetime
+import hmac
+import httplib
+import optparse
+import pprint
+import requests
+import simplejson
+import simplexml
+
 from urlparse import urlparse
 from urllib import urlencode
 try:
@@ -24,15 +32,15 @@ FORMATS = {
 }
 
 METHOD_SUCCESS_CODES = {
-    'GET':      httplib.OK,
-    'POST':     httplib.CREATED,
-    'PUT':      httplib.OK,
-    'DELETE':   httplib.NO_CONTENT,
+    'GET': httplib.OK,
+    'POST': httplib.CREATED,
+    'PUT': httplib.OK,
+    'DELETE': httplib.NO_CONTENT,
 }
 
-# A simple Exception class that can handle the HTTP
-# status.
+
 class SmartFileException(Exception):
+    """ A simple Exception class that can handle the HTTP status. """
     def __init__(self, status, message):
         super(SmartFileException, self).__init__(message)
         self.status = status
@@ -49,16 +57,17 @@ class UserClient(object):
 
     def create(self, username, fullname, password, email, **kwargs):
         data = {
-            'name':         fullname,
-            'username':     username,
-            'password':     password,
-            'email':        email,
+            'name': fullname,
+            'username': username,
+            'password': password,
+            'email': email,
         }
         data.update(kwargs)
         self.client.http_request('POST', self.uri + username, data)
 
     def delete(self, username):
         self.client.http_request('DELETE', self.uri + username)
+
 
 class Client(object):
     def __init__(self, url, key, password, format='json'):
@@ -139,6 +148,7 @@ class Client(object):
 # use http_request to do the grunt work.
 def delete_user(username):
     http_request('/users/delete/{0}/'.format(username), {}, 'DELETE')
+
 
 def main():
     parser = optparse.OptionParser(prog="smartfile", description="SmartFile API client and sample program.")
