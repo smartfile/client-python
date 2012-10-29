@@ -1,184 +1,339 @@
 #!/usr/bin/python
 
-import base64
-import datetime
-import hmac
+import os
+import sys
 import httplib
-import optparse
-import pprint
-import requests
+import base64
 import simplejson
-import simplexml
-
-from urlparse import urlparse
+import hmac
+import optparse
+import datetime
+import pprint
 from urllib import urlencode
-try:
-    from hashlib.sha import sha
-    from hashlib.md5 import md5
-except ImportError:
-    from sha import new as sha
-    from md5 import new as md5
+from urlparse import urlparse
+from functools import wraps
 try:
     from urlparse import parse_qs
 except ImportError:
     from cgi import parse_qs
 
 # The default API url.
-API_URL = 'http://app.smartfile.com/api/1'
-
-FORMATS = {
-    'json': ('application/json', simplejson.dumps, simplejson.loads),
-    'xml': ('application/xml', simplexml.dumps, simplexml.loads),
-}
-
+API_URL = 'https://app.smartfile.com/api/2/'
+BLOCK_SIZE = 1024 ** 2
 METHOD_SUCCESS_CODES = {
-    'GET': httplib.OK,
-    'POST': httplib.CREATED,
-    'PUT': httplib.OK,
-    'DELETE': httplib.NO_CONTENT,
+    'GET':      httplib.OK,
+    'POST':     httplib.CREATED,
+    'PUT':      httplib.OK,
+    'DELETE':   httplib.NO_CONTENT,
 }
 
 
+def get_content_length(f):
+    "Get length of the 'file', could be a string or file-like object."
+    pos = 0
+    if callable(getattr(f, 'tell', None)):
+        pos = f.tell()
+    if callable(getattr(f, 'fileno', None)):
+        return max(0, os.fstat(f.fileno()).st_size - pos)
+    if callable(getattr(f, '__len__', None)):
+        return len(f)
+
+
+def clonedocs(fromdoc):
+    "Clones docstrings from another function."
+    @wraps
+    def wrapped(todoc):
+        todoc.__doc__ = fromdoc.__doc__
+    return wrapped
+
+
+# A simple Exception class that to differentiate API errors from general
+# Python errors.
 class SmartFileException(Exception):
-    """ A simple Exception class that can handle the HTTP status. """
+    pass
+
+
+# A simple Exception class that can handle the HTTP status.
+class SmartFileHttpException(SmartFileException):
     def __init__(self, status, message):
-        super(SmartFileException, self).__init__(message)
+        super(SmartFileHttpException, self).__init__(message)
         self.status = status
 
 
-class UserClient(object):
-    uri = '/user/'
-
-    def __init__(self, client):
-        self.client = client
-
-    def schema(self):
-        return self.client.http_request('GET', self.uri + 'schema/')
-
-    def create(self, username, fullname, password, email, **kwargs):
-        data = {
-            'name': fullname,
-            'username': username,
-            'password': password,
-            'email': email,
-        }
-        data.update(kwargs)
-        self.client.http_request('POST', self.uri + username, data)
-
-    def delete(self, username):
-        self.client.http_request('DELETE', self.uri + username)
-
-
 class Client(object):
-    def __init__(self, url, key, password, format='json'):
-        self.url = url
+    "Base API client that performs HTTP communication."
+
+    def __init__(self, key, password, url=API_URL):
         self.key = key
         self.password = password
-        try:
-            self.mime_type, self.serialize, self.deserialize = FORMATS.get(format)
-        except KeyError:
-            raise Exception('Invalid data format %s' % format)
-        self.format = format
-        self.user = UserClient(self)
+        self.url = url
 
-    def http_request(self, method, uri, data={}, headers={}):
-        request = getattr(requests, method.lower(), None)
-        if request is None:
+    def http_request(self, method, path=None, data={}, headers={}):
+        method = method.upper()
+        if method not in METHOD_SUCCESS_CODES:
             raise Exception('Invalid HTTP method %s' % method)
         # Create full URL
-        url = self.url + uri
+        url = self.url
+        if path:
+            url = os.path.join(url, path)
+        if method == 'POST':
+            url += '?format=json'
+        else:
+            data['format'] = 'json'
         # Don't modify the headers
         headers = headers.copy()
-        if method != 'GET':
-            data = self.serialize(data)
-            # Calculate MD5 sum for content of request.
-            content_md5 = base64.b64encode(md5(data).digest())
-        else:
-            content_md5 = ''
-        url_parts = urlparse(url)
-        # Sign the outbound request.
-        mac = hmac.new(self.password, '%s %s\n' % (method.upper(), url_parts.path), sha)
-        mac.update('%s\n' % headers.setdefault('Content-MD5', content_md5))
-        mac.update('%s\n' % headers.setdefault('Content-Type', self.mime_type))
-        mac.update('%s\n' % headers.setdefault('Date', datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')))
-        namevalues = []
-        # Extract querystring values from url (if any).
-        if url_parts.query:
-            qs = parse_qs(url_parts.query)
-            for key, values in qs.items():
-                for value in values:
-                    namevalues.append('%s=%s\n' % (key, value))
-        # For a GET request, data will be passed via the querystring.
-        if method == 'GET':
-            for key, value in data.items():
-                namevalues.append('%s=%s\n' % (key, value))
-            data = urlencode(data)
-        # If there are any querystring values, sign them.
-        if namevalues:
-            map(mac.update, sorted(namevalues))
-        else:
-            # Otherwise sign a blank line where querystring data would be.
-            mac.update('\n')
-        sig = base64.b64encode(mac.digest())
-        headers.update({
-            # Authorization header to authenticate to the API.
-            'Authorization': 'SmartFile %s: %s' % (self.key, sig),
-            # tell the server what encoding we desire.
-            'Accept': self.mime_type,
-        })
-        # Perform the request.
-        r = request(url, data=data, headers=headers)
-        # Try to deserialize the response
-        content = self.deserialize(r.content)
-        # Each HTTP method indicates success differently.
-        if r.status_code == METHOD_SUCCESS_CODES.get(method.upper()):
-            return content
-        # The request was unsuccessful, raise an exception with
-        # the error message provided.
-        try:
-            content = content.get('message', content)
-        except AttributeError:
-            pass
         raise SmartFileException(r.status_code, content)
 
+    def serialize(self, data):
+        return simplejson.dumps(data)
 
-# This function makes the User add API call. It uses the http_request
-# function to handle the transport. Additional API calls could be supported
-# simply by writing additional wrappers that create the data dict and
-# use http_request to do the grunt work.
-def delete_user(username):
-    http_request('/users/delete/{0}/'.format(username), {}, 'DELETE')
+    def deserialize(self, data):
+        return simplejson.loads(data)
+
+
+class UserClient(Client):
+    "API client for performing user operations."
+
+    def list(self):
+        "Lists users."
+        return self.deserialize(self.http_request('GET'))
+
+    def create(self, username, email=None, root=None, password=None):
+        "Creates a user."
+        self.http_request('PUT', path=username)
+
+    def update(self, username, email=None, root=None, password=None):
+        "Updates a user."
+        self.http_request('POST', path=username)
+
+    def delete(self, username):
+        "Deletes a user."
+        self.http_request('DELETE', path=username)
+
+
+# Shortcut functions for user actions.
+
+
+@clonedocs(UserClient.list)
+def user_list(key, password, *args, **kwargs):
+    return UserClient(key, password).list(*args, **kwargs)
+
+
+@clonedocs(UserClient.create)
+def user_create(key, password, *args, **kwargs):
+    UserClient(key, password).create(*args, **kwargs)
+
+
+@clonedocs(UserClient.update)
+def user_update(key, password, *args, **kwargs):
+    UserClient(key, password).update(*args, **kwargs)
+
+
+@clonedocs(UserClient.delete)
+def user_delete(key, password, *args, **kwargs):
+    UserClient(key, password).delete(*args, **kwargs)
+
+
+class TaskClient(Client):
+    "API client for polling running tasks."
+    def __init__(self):
+        self.task = None
+
+    def start(self, method, path, *args, **kwargs):
+        if self.task:
+            raise ValueError('Task already started')
+        self.task = self.deserialize(self.http_request(method, path, *args, **kwargs))
+
+    def status(self):
+        if self.task:
+            raise ValueError('Task should be started with start() before retrieving status')
+        return self.deserialize(self.http_request('GET', 'task/%s/' % self.task.id))
+
+
+class PathClient(Client):
+    "API client for performing path operations."
+
+    def list(self, path='/'):
+        "Lists paths in given path."
+        return self.deserialize(self.http_request('GET', path=path))
+
+    def create(self, path):
+        "Creates a directory."
+        self.http_request('PUT', path=path)
+
+    def delete(self, path):
+        "Deletes a directory."
+        task = self.deserialize(self.http_request('POST', path='oper/remove%s' % path))
+        return Task(task)
+
+    def upload(self, path, f, cb=None, bs=BLOCK_SIZE):
+        "Uploads data to a path."
+        opened = False
+        if isinstance(f, basestring):
+            opened, f = True, file(f, 'rb')
+        try:
+            # Perform the HTTP download. Call cb after each block, so the caller
+            # can track progress.
+            length = get_content_length(f)
+        finally:
+            if opened:
+                f.close()
+        return self.deserialize()
+
+    def download(self, path, f):
+        "Downloads data from a path."
+        opened = False
+        if isinstance(f, basestring):
+            opened, f = True, file(f, 'wb')
+        try:
+            # Perform the HTTP upload. Call cb after each block, so the caller
+            # can track progress.
+            pass
+        finally:
+            if opened:
+                f.close()
+
+
+# Shortcut functions for path actions.
+
+
+@clonedocs(PathClient.list)
+def path_list(key, password, *args, **kwargs):
+    return PathClient(key, password).list(*args, **kwargs)
+
+
+@clonedocs(PathClient.create)
+def path_create(key, password, *args, **kwargs):
+    PathClient(key, password).create(*args, **kwargs)
+
+
+@clonedocs(PathClient.delete)
+def path_delete(key, password, *args, **kwargs):
+    PathClient(key, password).delete(*args, **kwargs)
+
+
+@clonedocs(PathClient.upload)
+def path_upload(key, password, *args, **kwargs):
+    PathClient(key, password).upload(*args, **kwargs)
+
+
+@clonedocs(PathClient.download)
+def path_download(key, password, *args, **kwargs):
+    PathClient(key, password).download(*args, **kwargs)
+
+
+# A CLI tool for interacting with the API.
 
 
 def main():
+    def prompt(name, allow_none=True):
+        "Prompt the user for a value, if they hit enter, return None."
+        prompt = 'Please enter a %s' % name
+        if allow_none:
+            prompt += ', or <enter> to skip'
+        prompt += ': '
+        value = raw_input(prompt)
+        if value == '':
+            value = None
+        return value
+
+
+    def make_progress(direction):
+        @wraps
+        def wrapped(total, complete):
+            percent = complete / total * 100
+            print direction, '%s%%' % percent
+        return wrapped
+
+
     parser = optparse.OptionParser(prog="smartfile", description="SmartFile API client and sample program.")
-    parser.add_option("-u", "--url", help="API url to use for call.", default=API_URL)
-    parser.add_option("-k", "--key", help="API key to use for call.")
-    parser.add_option("-p", "--password", help="API password to use for call.")
-    parser.add_option("-f", "--format", help="Data serialization format.", default='json')
-    parser.add_option("-d", "--debug", action='store_true', help="API password to use for call.")
+    parser.add_option("-u", "--api-url", help="Specify the API url, if omitted, the default is used.")
+    parser.add_option("-k", "--api-key", help="API key to use for call.")
+    parser.add_option("-p", "--api-password", help="API password to use for call.")
+    parser.add_option("-d", "--debug", action='store_true', help="Enable debugging.")
+
+    parser.add_option('-N', '--user-create', help='Create a new user.')
+    parser.add_option('-S', '--user-update', help='Update a user.')
+    parser.add_option('-X', '--user-delete', help='Delete a user.')
+    parser.add_option('-e', '--user-email', help='Email address for creating/updating a user.')
+    parser.add_option('-f', '--user-fullname', help='Full name for creating/updating a user.')
+    parser.add_option('-A', '--user-password', help='Password for creating/updating a user.')
+
+    parser.add_option('-U', '--file-upload', help='Upload a file to SmartFile.')
+    parser.add_option('-D', '--file-download', help='Download a file from SmartFile.')
+    parser.add_option('-E', '--file-delete', help='Delete a file from SmartFile')
+    parser.add_option('-P', '--file-path', help='The local path for uploading/downloading. Use - for stdin, stdout. '
+                                           'Only needed if path is different than the remote path.')
 
     (options, args) = parser.parse_args()
 
-    if not options.key:
-        parser.error('You must provide an API key.')
-    if not options.password:
-        parser.error('You must provide an API password.')
+    if options.api_url:
+        api_url = options.api_url
+    else:
+        api_url = os.environ.get('SMARTFILE_API_URL', API_URL)
 
-    if options.debug:
-        import pdb; pdb.set_trace()
+    if options.api_key:
+        api_key = options.api_key
+    else:
+        api_key = os.environ.get('SMARTFILE_API_KEY', None)
+    if not api_key:
+        parser.error('You must provide an API key, use the --api-key argument or SMARTFILE_API_KEY environment variable.')
 
-    c = Client(options.url, options.key, options.password, format=options.format)
+    if options.api_password:
+        api_password = options.api_password
+    else:
+        api_password = os.environ.get('SMARTFILE_API_PASSWORD', None)
+    if not api_password:
+        parser.error('You must provide an API password, use the --api-password argument or SMARTFILE_API_PASSWORD environment variable.')
 
-    pprint.pprint(c.user.schema())
+    if options.user_create or options.user_update:
+        if options.user_create:
+            username = options.user_create
+        else:
+            username = options.user_update
+        kwargs = {
+            'username': username,
+        }
+        if options.user_fullname:
+            kwargs['fullname'] = options.user_fullname
+        if options.user_email:
+            kwargs['email'] = options.user_email
+        if options.user_password:
+            kwargs['password'] = options.user_password
+        c = UserClient(api_key, api_password, url=api_url)
+        if options.user_create:
+            c.create(**kwargs)
+        else:
+            c.update(**kwargs)
 
-    # Ask the user for the required parameters. These will be
-    # passed to the API via an HTTP POST request.
-    #fullname = raw_input("Please enter a full name: ")
-    #username = raw_input("Please enter a username: ")
-    #password = raw_input("Please enter a password: ")
-    #email = raw_input("Please enter an email address: ")
-    #c.user.create(username, fullname, password, email)
+    if options.user_delete:
+        UserClient(api_key, api_password, url=api_url).delete(options.user_delete)
+
+    if options.file_upload:
+        if not options.file_path:
+            f = options.file_upload
+        elif options.path == '-':
+            # TODO, need to read this in, so we can determine
+            # the length (Content-Length).
+            f = sys.stdin
+        else:
+            f = options.file_path
+        PathClient(api_key, api_password, url=api_url).upload(options.upload, f, cb=make_progress('Upload'))
+
+    if options.file_download:
+        if not options.file_path:
+            f = options.file_download
+        elif options.path == '-':
+            opened, f = False, sys.stdout
+        else:
+            f = options.file_path
+        PathClient(api_key, api_password, url=api_url).download(options.download, f, cb=make_progress('Download'))
+
+    if options.file_delete:
+        PathClient(api_key, api_password, url=api_url).delete(options.delete)
+
+    pprint.pprint(r)
+
 
 if __name__ == '__main__':
     # Start things off in main()
