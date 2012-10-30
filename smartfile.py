@@ -4,6 +4,7 @@ import os
 import sys
 import httplib
 import base64
+import requests
 import simplejson
 import hmac
 import optparse
@@ -39,11 +40,15 @@ def get_content_length(f):
         return len(f)
 
 
-def clonedocs(fromdoc):
-    "Clones docstrings from another function."
+def mergedocs(fromdoc):
+    """
+    Merges docstrings for two functions. This is used for shortcut functions.
+    These shortcuts accept their own parameters and proxy the rest. By merging
+    the docstrings, the resulting docstring will define all parameters.
+    """
     @wraps
     def wrapped(todoc):
-        todoc.__doc__ = fromdoc.__doc__
+        todoc.__doc__ = '%s%s' % (todoc.__doc__, fromdoc.__doc__)
     return wrapped
 
 
@@ -54,10 +59,20 @@ class SmartFileException(Exception):
 
 
 # A simple Exception class that can handle the HTTP status.
-class SmartFileHttpException(SmartFileException):
+class SmartFileHttpError(SmartFileError):
     def __init__(self, status, message):
-        super(SmartFileHttpException, self).__init__(message)
+        super(SmartFileHttpError, self).__init__(message)
         self.status = status
+
+
+class SmartFileValidationError(SmartFileHttpError):
+    def __init__(self, status, fields):
+        super(SmartFileValidationError, self).__init__(status, 'A validation error ocurred')
+        self.fields = fields
+
+    def __str__(self):
+        messages = ['%s - %s' % (n, m) for n, m in self.fields.items()]
+        return '%s\n%s' % (self.message, '\n'.join(messages))
 
 
 class Client(object):
@@ -114,22 +129,22 @@ class UserClient(Client):
 # Shortcut functions for user actions.
 
 
-@clonedocs(UserClient.list)
+@mergedocs(UserClient.list)
 def user_list(key, password, *args, **kwargs):
     return UserClient(key, password).list(*args, **kwargs)
 
 
-@clonedocs(UserClient.create)
+@mergedocs(UserClient.create)
 def user_create(key, password, *args, **kwargs):
     UserClient(key, password).create(*args, **kwargs)
 
 
-@clonedocs(UserClient.update)
+@mergedocs(UserClient.update)
 def user_update(key, password, *args, **kwargs):
     UserClient(key, password).update(*args, **kwargs)
 
 
-@clonedocs(UserClient.delete)
+@mergedocs(UserClient.delete)
 def user_delete(key, password, *args, **kwargs):
     UserClient(key, password).delete(*args, **kwargs)
 
@@ -154,7 +169,12 @@ class PathClient(Client):
     "API client for performing path operations."
 
     def list(self, path='/'):
-        "Lists paths in given path."
+        """
+        Lists paths in given path.
+
+        Parameters:
+         * path (optional) - the path to list, defaults to '/' if omitted.
+        """
         return self.deserialize(self.http_request('GET', path=path))
 
     def create(self, path):
@@ -197,27 +217,37 @@ class PathClient(Client):
 # Shortcut functions for path actions.
 
 
-@clonedocs(PathClient.list)
+@mergedocs(PathClient.list)
 def path_list(key, password, *args, **kwargs):
+    """
+    A shortcut function for listing a path.
+
+    Takes as the first two parameters:
+
+     * key - API key.
+     * password - API password
+
+    And the additional parameters for path listing.
+    """
     return PathClient(key, password).list(*args, **kwargs)
 
 
-@clonedocs(PathClient.create)
+@mergedocs(PathClient.create)
 def path_create(key, password, *args, **kwargs):
     PathClient(key, password).create(*args, **kwargs)
 
 
-@clonedocs(PathClient.delete)
+@mergedocs(PathClient.delete)
 def path_delete(key, password, *args, **kwargs):
     PathClient(key, password).delete(*args, **kwargs)
 
 
-@clonedocs(PathClient.upload)
+@mergedocs(PathClient.upload)
 def path_upload(key, password, *args, **kwargs):
     PathClient(key, password).upload(*args, **kwargs)
 
 
-@clonedocs(PathClient.download)
+@mergedocs(PathClient.download)
 def path_download(key, password, *args, **kwargs):
     PathClient(key, password).download(*args, **kwargs)
 
