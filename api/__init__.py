@@ -12,10 +12,7 @@ class BaseSmartFileAPI(object):
 
     def __init__(self, api_key, api_pass, session=None, **kwargs):
         # Re-use existing session if provided.
-        if session is None:
-            self._session = requests.session(auth=(api_key, api_pass))
-        else:
-            self._session = session
+        self._session = session or requests.session(auth=(api_key, api_pass))
 
     def _gen_url(self, uri_args=(), baseurl=None):
         """ Join segments onto URL to call API. """
