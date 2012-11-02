@@ -6,7 +6,7 @@ from os.path import dirname
 from urlparse import urljoin
 
 
-class BaseSmartFileAPI(object):
+class _BaseAPI(object):
     """ Base class for specific API endpoints (i.e., user, path). """
     _baseurl = 'http://localhost:8000/api/2/'
 
@@ -52,7 +52,7 @@ class BaseSmartFileAPI(object):
         return self._session.delete(url, **kwargs)
 
 
-class SmartFileUserAPI(BaseSmartFileAPI):
+class UserAPI(_BaseAPI):
     """ User API. """
     _api_uri = 'user/'
 
@@ -73,14 +73,13 @@ class SmartFileUserAPI(BaseSmartFileAPI):
         return self._delete
 
 
-class SmartFilePathOperAPI(BaseSmartFileAPI):
+class PathOperAPI(_BaseAPI):
     """ Path Oper API. """
     _api_uri = 'path/oper/'
 
     def remove(self, path):
         """ Create task to remove file system object(s). """
-        return super(SmartFilePathOperAPI, self)._create(
-            {'path': path}, 'remove/')
+        return super(PathOperAPI, self)._create({'path': path}, 'remove/')
 
     def poll(self, url, checks=5, check_timeout=2):
         """
@@ -98,31 +97,31 @@ class SmartFilePathOperAPI(BaseSmartFileAPI):
         return response
 
 
-class SmartFilePathTreeAPI(BaseSmartFileAPI):
+class PathTreeAPI(_BaseAPI):
     """ Path Tree API. """
     _api_uri = 'path/tree/'
 
     def list(self, path='/', children=False, *args, **kwargs):
         if children:
             kwargs['params'] = {'children': True}
-        return super(SmartFilePathTreeAPI, self)._read(path, *args, **kwargs)
+        return super(PathTreeAPI, self)._read(path, *args, **kwargs)
 
 
-class SmartFilePathAPI(BaseSmartFileAPI):
+class PathAPI(_BaseAPI):
     """ Path API. """
     _api_uri = 'path/'
     _api_uri_ext = 'data/'
 
     def __init__(self, *args, **kwargs):
-        super(SmartFilePathAPI, self).__init__(*args, **kwargs)
+        super(PathAPI, self).__init__(*args, **kwargs)
         kwargs['session'] = self._session
-        self._path_oper_api = SmartFilePathOperAPI(*args, **kwargs)
-        self._path_tree_api = SmartFilePathTreeAPI(*args, **kwargs)
+        self._path_oper_api = PathOperAPI(*args, **kwargs)
+        self._path_tree_api = PathTreeAPI(*args, **kwargs)
 
     def _get_file_data(self, id, data=False):
         """ Get data of file using ID of file. """
         args = (id, self._api_uri_ext) if data else (id, )
-        return super(SmartFilePathAPI, self)._read(*args)
+        return super(PathAPI, self)._read(*args)
 
     @property
     def list(self):
@@ -154,11 +153,11 @@ class SmartFilePathAPI(BaseSmartFileAPI):
 
         # Upload file.
         files = {'file': (basename(dst), open(src, 'rb'))}
-        return super(SmartFilePathAPI, self)._create(
+        return super(PathAPI, self)._create(
             None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
 
 
-class SmartFileAPI(object):
+class API(object):
     """
     This class provides a single interface to the various segments of the
     SmartFile API.
@@ -180,16 +179,16 @@ class SmartFileAPI(object):
 
     @property
     def path(self):
-        return self._get_api('_api_path_obj', SmartFilePathAPI)
+        return self._get_api('_api_path_obj', PathAPI)
 
     @property
     def path_oper(self):
-        return self._get_api('_api_path_oper_obj', SmartFilePathOperAPI)
+        return self._get_api('_api_path_oper_obj', PathOperAPI)
 
     @property
     def path_tree(self):
-        return self._get_api('_api_path_tree_obj', SmartFilePathTreeAPI)
+        return self._get_api('_api_path_tree_obj', PathTreeAPI)
 
     @property
     def user(self):
-        return self._get_api('_api_user_obj', SmartFileUserAPI)
+        return self._get_api('_api_user_obj', UserAPI)

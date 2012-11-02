@@ -2,18 +2,18 @@ import filecmp
 import os
 import unittest
 
-from api import SmartFileAPI
+from smartfile import API
 
 
 # NOTE:  replace API key and password with actual values.
-API_KEY = 'tqpPpZqotBMojYX'
-API_PASS = 'JC5c3bKwhNkBAAk'
+API_KEY = 'AvmvSkqz9N16e3D'
+API_PASS = '2ovlyNsfdPQMS98'
 
 
 class BaseAPITestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = SmartFileAPI(API_KEY, API_PASS)
+        cls.client = API(API_KEY, API_PASS)
 
 
 class UserTestCase(BaseAPITestCase):
