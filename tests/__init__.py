@@ -5,18 +5,10 @@ import unittest
 from smartfile import API
 
 
-# Pull the API key and password from the environment.
-try:
-    API_KEY = os.environ['API_KEY']
-    API_PASS = os.environ['API_PASS']
-except KeyError:
-    raise Exception('Set key/password (API_KEY, API_PASS) in environment')
-
-
 class BaseAPITestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = API(API_KEY, API_PASS)
+        cls.client = API()
 
 
 class UserTestCase(BaseAPITestCase):

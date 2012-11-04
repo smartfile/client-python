@@ -1,3 +1,4 @@
+import os
 import requests
 import time
 
@@ -10,9 +11,23 @@ class _BaseAPI(object):
     """ Base class for specific API endpoints (i.e., user, path). """
     _baseurl = 'http://localhost:8000/api/2/'
 
-    def __init__(self, api_key, api_pass, session=None, **kwargs):
+    def __init__(self, api_key=None, api_pass=None, session=None, **kwargs):
         # Re-use existing session if provided.
-        self._session = session or requests.session(auth=(api_key, api_pass))
+        self._session = session or requests.session(
+            auth=self._get_auth(api_key, api_pass))
+
+    def _get_auth(self, api_key, api_pass):
+        """ Get API key and password. """
+        if api_key is None and api_pass is None:
+            # Pull the API key and password from the environment.
+            try:
+                api_key = os.environ['SMARTFILE_API_KEY']
+                api_pass = os.environ['SMARTFILE_API_PASS']
+            except KeyError:
+                raise Exception(
+                    'Set key/password (SMARTFILE_API_KEY, SMARTFILE_API_PASS) in environment')
+
+        return api_key, api_pass
 
     def _gen_url(self, uri_args=(), baseurl=None):
         """ Join segments onto URL to call API. """
@@ -162,19 +177,17 @@ class API(object):
     This class provides a single interface to the various segments of the
     SmartFile API.
     """
-    _session = None
-
-    def __init__(self, api_key, api_pass):
-        self._api_key = api_key
-        self._api_pass = api_pass
+    def __init__(self, api_key=None, api_pass=None):
+        # Create a session to be shared by all endpoints.
+        base = _BaseAPI(api_key, api_pass)
+        self._session = base._session
 
     def _get_api(self, attr, cls):
+        """ Return the API endpoint.  Instantiate it if needed. """
         api = getattr(self, attr, None)
         if api is None:
-            api = cls(self._api_key, self._api_pass, session=self._session)
+            api = cls(None, None, session=self._session)
             setattr(self, attr, api)
-            if self._session is None:
-                self._session = getattr(self, attr)._session
         return api
 
     @property
