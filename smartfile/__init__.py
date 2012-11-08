@@ -6,6 +6,8 @@ from os.path import basename
 from os.path import dirname
 from urlparse import urljoin
 
+from smartfile.decorators import response_processor
+
 
 class _BaseAPI(object):
     """ Base class for specific API endpoints (i.e., user, path). """
@@ -44,16 +46,19 @@ class _BaseAPI(object):
 
         return url
 
+    @response_processor
     def _create(self, data=None, *args, **kwargs):
         """ The C in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
         return self._session.post(url, data=data, **kwargs)
 
+    @response_processor
     def _read(self, *args, **kwargs):
         """ The R in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
         return self._session.get(url, **kwargs)
 
+    @response_processor
     def _update(self, data=None, *args, **kwargs):
         """ The U in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
@@ -61,6 +66,7 @@ class _BaseAPI(object):
             kwargs['data'] = data
         return self._session.post(url, **kwargs)
 
+    @response_processor
     def _delete(self, *args, **kwargs):
         """ The D in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))

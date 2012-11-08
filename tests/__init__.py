@@ -3,6 +3,7 @@ import os
 import time
 import unittest
 
+from smartfile.exceptions import SmartFileResponseException
 from smartfile import API
 
 
@@ -122,6 +123,11 @@ class PathTreeTestCase(BasePathTestCase):
         response = self.client.path_tree.list(self.remote_file)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['path'], self.remote_file)
+
+    def test_file_non_existent_list(self):
+        with self.assertRaises(SmartFileResponseException) as cm:
+            self.client.path_tree.list(self.remote_file)
+        self.assertEqual(cm.exception.status_code, 404)
 
     def test_directory_list(self):
         response = self.client.path_tree.list('/')
