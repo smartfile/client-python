@@ -4,7 +4,6 @@ import time
 
 from os.path import basename
 from os.path import dirname
-from urlparse import urljoin
 
 from smartfile.decorators import response_processor
 
@@ -33,13 +32,15 @@ class _BaseAPI(object):
 
     def _gen_url(self, uri_args=(), baseurl=None):
         """ Join segments onto URL to call API. """
-        if baseurl:
-            url = baseurl
-        else:
-            url = urljoin(self._baseurl, self._api_uri)
+        # Generate list of path components from URI template and provided
+        # arguments.  'None' in the template is replaced with a path if there
+        # is one provided by the caller.
+        uri_iter = iter(uri_args)
+        paths = (next(uri_iter) if x is None else x for x in self._api_uri)
 
-        # Concatenate the additional path components.
-        for arg in uri_args:
+        # Concatenate the path components.
+        url = baseurl or self._baseurl
+        for arg in paths:
             if arg != '/':
                 sep = '' if url.endswith('/') else '/'
                 url = '{0}{1}{2}'.format(url, sep, arg)
@@ -75,7 +76,7 @@ class _BaseAPI(object):
 
 class UserAPI(_BaseAPI):
     """ User API. """
-    _api_uri = 'user/'
+    _api_uri = ('user/', None)
 
     @property
     def create(self):
@@ -96,7 +97,7 @@ class UserAPI(_BaseAPI):
 
 class PathOperAPI(_BaseAPI):
     """ Path Oper API. """
-    _api_uri = 'path/oper/'
+    _api_uri = ('path/oper/', None, None, None)
 
     def remove(self, path):
         """ Create task to remove file system object(s). """
@@ -120,7 +121,7 @@ class PathOperAPI(_BaseAPI):
 
 class PathTreeAPI(_BaseAPI):
     """ Path Tree API. """
-    _api_uri = 'path/tree/'
+    _api_uri = ('path/tree/', None)
 
     def list(self, path='/', children=False, *args, **kwargs):
         if children:
@@ -128,21 +129,29 @@ class PathTreeAPI(_BaseAPI):
         return super(PathTreeAPI, self)._read(path, *args, **kwargs)
 
 
+class PathDataAPI(_BaseAPI):
+    """ Path Data API. """
+    _api_uri = ('path/', None, 'data/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+
 class PathAPI(_BaseAPI):
     """ Path API. """
-    _api_uri = 'path/'
-    _api_uri_ext = 'data/'
+    _api_uri = ('path/', None)
 
     def __init__(self, *args, **kwargs):
         super(PathAPI, self).__init__(*args, **kwargs)
         kwargs['session'] = self._session
+        self._path_data_api = PathDataAPI(*args, **kwargs)
         self._path_oper_api = PathOperAPI(*args, **kwargs)
         self._path_tree_api = PathTreeAPI(*args, **kwargs)
-
-    def _get_file_data(self, id, data=False):
-        """ Get data of file using ID of file. """
-        args = (id, self._api_uri_ext) if data else (id, )
-        return super(PathAPI, self)._read(*args)
 
     @property
     def list(self):
@@ -157,9 +166,9 @@ class PathAPI(_BaseAPI):
         return response
 
     def download(self, dst, src):
-        # Get file ID and download file in chunks.
+        # Get file ID and download and save file in chunks.
         tree = self.list(src)
-        response = self._get_file_data(tree.json['id'], True)
+        response = self._path_data_api.read(tree.json['id'])
         if response.status_code == 200:
             with open(dst, 'wb') as dst_file:
                 for chunk in response.iter_content(16 * 1024):
@@ -174,6 +183,8 @@ class PathAPI(_BaseAPI):
 
         # Upload file.
         files = {'file': (basename(dst), open(src, 'rb'))}
+        return self._path_data_api.create(None, tree.json['id'], files=files)
+
         return super(PathAPI, self)._create(
             None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
 
