@@ -38,9 +38,11 @@ class _BaseAPI(object):
         uri_iter = iter(uri_args)
         paths = (next(uri_iter) if x is None else x for x in self._api_uri)
 
-        # Concatenate the path components.
+        # Concatenate the path components without '//'.
         url = baseurl or self._baseurl
         for arg in paths:
+            if isinstance(arg, basestring) and arg.startswith('/'):
+                arg = arg[1:]
             if arg != '/':
                 sep = '' if url.endswith('/') else '/'
                 url = '{0}{1}{2}'.format(url, sep, arg)
