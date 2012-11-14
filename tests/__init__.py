@@ -151,3 +151,68 @@ class PathTreeTestCase(BasePathTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('children', response.json)
         self.assertGreater(len(response.json['children']), 0)
+
+
+class RoleTestCase(BaseAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(RoleTestCase, cls).setUpClass()
+        cls._test_user = {
+            'name': 'Test User',
+            'username': 'testuser',
+            'password': 'testpass',
+            'email': 'testuser@example.com'
+        }
+        cls._test_role = {
+            'name': 'Test Role',
+            'rights': {
+                'self_manage': True
+            }
+        }
+        cls._test_role2 = {
+            'name': 'Test Role2',
+            'rights': {
+                'self_manage': False
+            }
+        }
+        try:
+            cls.client.user.delete(cls._test_user['username'])
+        except:
+            pass
+        try:
+            cls.client.role.delete(cls._test_role['name'])
+        except:
+            pass
+        try:
+            cls.client.role.delete(cls._test_role2['name'])
+        except:
+            pass
+
+    def test_create_role(self):
+        response = self.client.role.create(self._test_role)
+        self.assertEqual(response.status_code, 201)
+        self.client.role.delete(self._test_role['name'])
+
+    def test_list_roles(self):
+        self.client.role.create(self._test_role)
+        response = self.client.role.read()
+        self.assertEqual(response.status_code, 200)
+        self.client.role.delete(self._test_role['name'])
+
+    def test_list_role(self):
+        self.client.role.create(self._test_role)
+        response = self.client.role.read(self._test_role['name'])
+        self.assertEqual(response.status_code, 200)
+        self.client.role.delete(self._test_role['name'])
+
+    def test_update_role(self):
+        self.client.role.create(self._test_role)
+        response = self.client.role.update(self._test_role2,
+                                           self._test_role['name'])
+        self.assertEqual(response.status_code, 200)
+        self.client.role.delete(self._test_role2['name'])
+
+    def test_delete_role(self):
+        self.client.role.create(self._test_role)
+        response = self.client.role.delete(self._test_role['name'])
+        self.assertEqual(response.status_code, 204)

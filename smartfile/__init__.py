@@ -195,6 +195,27 @@ class PathAPI(_BaseAPI):
             None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
 
 
+class RoleAPI(_BaseAPI):
+    """ Role API. """
+    _api_uri = ('role/', None)
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
 class API(object):
     """
     This class provides a single interface to the various segments of the
@@ -224,6 +245,10 @@ class API(object):
     @property
     def path_tree(self):
         return self._get_api('_api_path_tree_obj', PathTreeAPI)
+
+    @property
+    def role(self):
+        return self._get_api('_api_role_obj', RoleAPI)
 
     @property
     def user(self):
