@@ -33,8 +33,14 @@ class UserTestCase(BaseAPITestCase):
             'password': 'testpass2',
             'email': 'testuser2@example.com'
         }
-        cls.client.user.delete(cls._test_user['username'])
-        cls.client.user.delete(cls._test_user2['username'])
+        try:
+            cls.client.user.delete(cls._test_user['username'])
+        except:
+            pass
+        try:
+            cls.client.user.delete(cls._test_user2['username'])
+        except:
+            pass
 
     def test_create_user(self):
         response = self.client.user.create(self._test_user2)
@@ -66,7 +72,10 @@ class BasePathTestCase(BaseAPITestCase):
         cls.local_file = '/etc/motd'
         cls.remote_file = '/motd'
         cls.downloaded_file = 'motd.down'
-        cls.client.path.remove(cls.remote_file)
+        try:
+            cls.client.path.remove(cls.remote_file)
+        except:
+            pass
 
 
 class PathTestCase(BasePathTestCase):
@@ -116,7 +125,10 @@ class PathTreeTestCase(BasePathTestCase):
         cls.local_file = '/etc/motd'
         cls.remote_file = '/motd'
         cls.downloaded_file = 'motd.down'
-        cls.client.path.remove(cls.remote_file)
+        try:
+            cls.client.path.remove(cls.remote_file)
+        except:
+            pass
 
     def test_file_list(self):
         self.client.path.upload(self.remote_file, self.local_file)
