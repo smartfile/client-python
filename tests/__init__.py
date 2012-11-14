@@ -94,8 +94,8 @@ class PathTestCase(BasePathTestCase):
         except:
             pass
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(cmp_result)
         self.client.path.remove(self.remote_file)
+        self.assertTrue(cmp_result)
 
     def test_file_remove(self):
         """ Delete file using shortcut within Path API. """
@@ -134,6 +134,7 @@ class PathTreeTestCase(BasePathTestCase):
         self.client.path.upload(self.remote_file, self.local_file)
         response = self.client.path_tree.list(self.remote_file)
         self.assertEqual(response.status_code, 200)
+        self.client.path.remove(self.remote_file)
         self.assertEqual(response.json['path'], self.remote_file)
 
     def test_file_non_existent_list(self):
