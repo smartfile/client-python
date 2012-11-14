@@ -35,6 +35,10 @@ class _BaseAPI(object):
         # Generate list of path components from URI template and provided
         # arguments.  'None' in the template is replaced with a path if there
         # is one provided by the caller.
+        #
+        # NOTE:  uri_iter raises StopIteration if it runs out of elements.
+        # This is caught by the generator which stops before all the elements
+        # in self._api_url are used.
         uri_iter = iter(uri_args)
         paths = (next(uri_iter) if x is None else x for x in self._api_uri)
 
