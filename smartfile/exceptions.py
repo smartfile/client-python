@@ -24,7 +24,7 @@ class SmartFileResponseException(SmartFileException):
     def __init__(self, response, *args, **kwargs):
         self.response = response
         self.status_code = response.status_code
-        self.detail = response.json['detail']
+        self.detail = response.json.get('detail', 'Check response for errors')
         super(SmartFileResponseException, self).__init__(*args, **kwargs)
 
     def __str__(self):
