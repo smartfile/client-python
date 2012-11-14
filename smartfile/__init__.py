@@ -82,7 +82,7 @@ class _BaseAPI(object):
 
 class UserAPI(_BaseAPI):
     """ User API. """
-    _api_uri = ('user/', None)
+    _api_uri = ('user/', None, '/')
 
     @property
     def create(self):
@@ -103,7 +103,7 @@ class UserAPI(_BaseAPI):
 
 class PathOperAPI(_BaseAPI):
     """ Path Oper API. """
-    _api_uri = ('path/oper/', None, None, None)
+    _api_uri = ('path/oper/', None, None, None, '/')
 
     def remove(self, path):
         """ Create task to remove file system object(s). """
@@ -150,7 +150,7 @@ class PathDataAPI(_BaseAPI):
 
 class PathAPI(_BaseAPI):
     """ Path API. """
-    _api_uri = ('path/', None)
+    _api_uri = ('path/', None, '/')
 
     def __init__(self, *args, **kwargs):
         super(PathAPI, self).__init__(*args, **kwargs)
@@ -197,7 +197,7 @@ class PathAPI(_BaseAPI):
 
 class RoleAPI(_BaseAPI):
     """ Role API. """
-    _api_uri = ('role/', None)
+    _api_uri = ('role/', None, '/')
 
     @property
     def create(self):
