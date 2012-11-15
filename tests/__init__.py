@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import filecmp
 import os
 import time
@@ -10,13 +12,13 @@ from smartfile.exceptions import SmartFileResponseException
 class BaseAPITestCase(unittest.TestCase):
     _test_user = {
         'name': 'Test User',
-        'username': 'testuser',
+        'username': 'test_úsáideoir',
         'password': 'testpass',
         'email': 'testuser@example.com'
     }
     _test_user2 = {
         'name': 'Test User2',
-        'username': 'testuser2',
+        'username': 'test_úsáideoir2',
         'password': 'testpass2',
         'email': 'testuser2@example.com'
     }
@@ -65,13 +67,13 @@ class UserTestCase(BaseAPITestCase):
 
     def test_list_users(self):
         self.client.user.create(self._test_user)
-        response = self.client.user.list()
+        response = self.client.user.read()
         self.assertEqual(response.status_code, 200)
         self.client.user.delete(self._test_user['username'])
 
     def test_list_user(self):
         self.client.user.create(self._test_user)
-        response = self.client.user.list(self._test_user['username'])
+        response = self.client.user.read(self._test_user['username'])
         self.assertEqual(response.status_code, 200)
         self.client.user.delete(self._test_user['username'])
 
@@ -183,23 +185,23 @@ class PathOperTestCase(BasePathTestCase):
 class PathTreeTestCase(BasePathTestCase):
     def test_file_list(self):
         self.client.path.upload(self._test_remote_file, self._test_local_file)
-        response = self.client.path_tree.list(self._test_remote_file)
+        response = self.client.path_tree.read(self._test_remote_file)
         self.assertEqual(response.status_code, 200)
         self.client.path.remove(self._test_remote_file)
         self.assertEqual(response.json['path'], self._test_remote_file)
 
     def test_file_non_existent_list(self):
         with self.assertRaises(SmartFileResponseException) as cm:
-            self.client.path_tree.list(self._test_remote_file)
+            self.client.path_tree.read(self._test_remote_file)
         self.assertEqual(cm.exception.status_code, 404)
 
     def test_directory_list(self):
-        response = self.client.path_tree.list('/')
+        response = self.client.path_tree.read('/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['path'], '/')
 
     def test_directory_and_children_list(self):
-        response = self.client.path_tree.list('/', children=True)
+        response = self.client.path_tree.read('/', children=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('children', response.json)
         self.assertGreater(len(response.json['children']), 0)

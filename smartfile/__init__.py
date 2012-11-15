@@ -89,7 +89,7 @@ class UserAPI(_BaseAPI):
         return self._create
 
     @property
-    def list(self):
+    def read(self):
         return self._read
 
     @property
@@ -129,7 +129,7 @@ class PathTreeAPI(_BaseAPI):
     """ Path Tree API. """
     _api_uri = ('path/tree/', None)
 
-    def list(self, path='/', children=False, *args, **kwargs):
+    def read(self, path='/', children=False, *args, **kwargs):
         if children:
             kwargs['params'] = {'children': True}
         return super(PathTreeAPI, self)._read(path, *args, **kwargs)
@@ -160,9 +160,9 @@ class PathAPI(_BaseAPI):
         self._path_tree_api = PathTreeAPI(*args, **kwargs)
 
     @property
-    def list(self):
-        """ Shortcut to Path Tree API list(). """
-        return self._path_tree_api.list
+    def read(self):
+        """ Shortcut to Path Tree API read(). """
+        return self._path_tree_api.read
 
     def remove(self, path):
         """ Remove the file and poll awhile for it to finish. """
@@ -173,7 +173,7 @@ class PathAPI(_BaseAPI):
 
     def download(self, dst, src):
         # Get file ID and download and save file in chunks.
-        tree = self.list(src)
+        tree = self.read(src)
         response = self._path_data_api.read(tree.json['id'])
         if response.status_code == 200:
             with open(dst, 'wb') as dst_file:
@@ -185,7 +185,7 @@ class PathAPI(_BaseAPI):
     def upload(self, dst, src):
         # Get directory ID.
         dst_dir = dirname(dst)
-        tree = self._path_tree_api.list(dst_dir)
+        tree = self._path_tree_api.read(dst_dir)
 
         # Upload file.
         files = {'file': (basename(dst), open(src, 'rb'))}
