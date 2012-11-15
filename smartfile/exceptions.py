@@ -12,7 +12,7 @@ class SmartFileConnException(SmartFileException):
         if isinstance(exc, ConnectionError):
             self.detail = exc.message.strerror
         else:
-            self.detail = '{0}: {1}'.format(exc.__class__, exc)
+            self.detail = u'{0}: {1}'.format(exc.__class__, exc)
         super(SmartFileConnException, self).__init__(*args, **kwargs)
 
     def __str__(self):
@@ -24,7 +24,10 @@ class SmartFileResponseException(SmartFileException):
     def __init__(self, response, *args, **kwargs):
         self.response = response
         self.status_code = response.status_code
-        self.detail = response.json.get('detail', 'Check response for errors')
+        if not response.json or not 'detail' in response.json:
+            self.detail = u'Check response for errors'
+        else:
+            self.detail = response.json['detail']
         super(SmartFileResponseException, self).__init__(*args, **kwargs)
 
     def __str__(self):
