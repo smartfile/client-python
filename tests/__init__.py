@@ -3,11 +3,39 @@ import os
 import time
 import unittest
 
-from smartfile.exceptions import SmartFileResponseException
 from smartfile import API
+from smartfile.exceptions import SmartFileResponseException
 
 
 class BaseAPITestCase(unittest.TestCase):
+    _test_user = {
+        'name': 'Test User',
+        'username': 'testuser',
+        'password': 'testpass',
+        'email': 'testuser@example.com'
+    }
+    _test_user2 = {
+        'name': 'Test User2',
+        'username': 'testuser2',
+        'password': 'testpass2',
+        'email': 'testuser2@example.com'
+    }
+    _test_role = {
+        'name': 'Test Role',
+        'rights': {
+            'self_manage': True
+        }
+    }
+    _test_role2 = {
+        'name': 'Test Role2',
+        'rights': {
+            'self_manage': False
+        }
+    }
+    _test_local_file = '/etc/motd'
+    _test_remote_file = '/motd'
+    _test_downloaded_file = 'motd.down'
+
     @classmethod
     def setUpClass(cls):
         cls.client = API()
@@ -21,18 +49,6 @@ class UserTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
         super(UserTestCase, cls).setUpClass()
-        cls._test_user = {
-            'name': 'Test User',
-            'username': 'testuser',
-            'password': 'testpass',
-            'email': 'testuser@example.com'
-        }
-        cls._test_user2 = {
-            'name': 'Test User2',
-            'username': 'testuser2',
-            'password': 'testpass2',
-            'email': 'testuser2@example.com'
-        }
         try:
             cls.client.user.delete(cls._test_user['username'])
         except:
@@ -69,113 +85,16 @@ class BasePathTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
         super(BasePathTestCase, cls).setUpClass()
-        cls.local_file = '/etc/motd'
-        cls.remote_file = '/motd'
-        cls.downloaded_file = 'motd.down'
         try:
-            cls.client.path.remove(cls.remote_file)
+            cls.client.path.remove(cls._test_remote_file)
         except:
             pass
-
-
-class PathTestCase(BasePathTestCase):
-    def test_file_upload(self):
-        response = self.client.path.upload(self.remote_file, self.local_file)
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self.remote_file)
-
-    def test_file_download(self):
-        self.client.path.upload(self.remote_file, self.local_file)
-        response = self.client.path.download(self.downloaded_file,
-                                             self.remote_file)
-        cmp_result = filecmp.cmp(self.local_file, self.downloaded_file)
-        try:
-            os.unlink(self.downloaded_file)
-        except:
-            pass
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self.remote_file)
-        self.assertTrue(cmp_result)
-
-    def test_file_remove(self):
-        """ Delete file using shortcut within Path API. """
-        self.client.path.upload(self.remote_file, self.local_file)
-        response = self.client.path.remove(self.remote_file)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json['result']['status'], 'SUCCESS')
-
-
-class PathOperTestCase(BasePathTestCase):
-    def test_file_remove(self):
-        # Create task to delete file.
-        self.client.path.upload(self.remote_file, self.local_file)
-        response = self.client.path_oper.remove(self.remote_file)
-        self.assertEqual(response.status_code, 200)
-
-        # Check that the task completed.
-        response = self.client.path_oper.poll(response.json['url'])
-        status = response.json['result']['status']
-        self.assertEqual(status, 'SUCCESS')
-
-
-class PathTreeTestCase(BasePathTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(PathTreeTestCase, cls).setUpClass()
-        cls.local_file = '/etc/motd'
-        cls.remote_file = '/motd'
-        cls.downloaded_file = 'motd.down'
-        try:
-            cls.client.path.remove(cls.remote_file)
-        except:
-            pass
-
-    def test_file_list(self):
-        self.client.path.upload(self.remote_file, self.local_file)
-        response = self.client.path_tree.list(self.remote_file)
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self.remote_file)
-        self.assertEqual(response.json['path'], self.remote_file)
-
-    def test_file_non_existent_list(self):
-        with self.assertRaises(SmartFileResponseException) as cm:
-            self.client.path_tree.list(self.remote_file)
-        self.assertEqual(cm.exception.status_code, 404)
-
-    def test_directory_list(self):
-        response = self.client.path_tree.list('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json['path'], '/')
-
-    def test_directory_and_children_list(self):
-        response = self.client.path_tree.list('/', children=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('children', response.json)
-        self.assertGreater(len(response.json['children']), 0)
 
 
 class RoleTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
         super(RoleTestCase, cls).setUpClass()
-        cls._test_user = {
-            'name': 'Test User',
-            'username': 'testuser',
-            'password': 'testpass',
-            'email': 'testuser@example.com'
-        }
-        cls._test_role = {
-            'name': 'Test Role',
-            'rights': {
-                'self_manage': True
-            }
-        }
-        cls._test_role2 = {
-            'name': 'Test Role2',
-            'rights': {
-                'self_manage': False
-            }
-        }
         try:
             cls.client.user.delete(cls._test_user['username'])
         except:
@@ -217,3 +136,70 @@ class RoleTestCase(BaseAPITestCase):
         self.client.role.create(self._test_role)
         response = self.client.role.delete(self._test_role['name'])
         self.assertEqual(response.status_code, 204)
+
+
+class PathTestCase(BasePathTestCase):
+    def test_file_upload(self):
+        response = self.client.path.upload(self._test_remote_file,
+                                           self._test_local_file)
+        self.assertEqual(response.status_code, 200)
+        self.client.path.remove(self._test_remote_file)
+
+    def test_file_download(self):
+        self.client.path.upload(self._test_remote_file, self._test_local_file)
+        response = self.client.path.download(self._test_downloaded_file,
+                                             self._test_remote_file)
+        cmp_result = filecmp.cmp(self._test_local_file,
+                                 self._test_downloaded_file)
+        try:
+            os.unlink(self._test_downloaded_file)
+        except:
+            pass
+        self.assertEqual(response.status_code, 200)
+        self.client.path.remove(self._test_remote_file)
+        self.assertTrue(cmp_result)
+
+    def test_file_remove(self):
+        """ Delete file using shortcut within Path API. """
+        self.client.path.upload(self._test_remote_file, self._test_local_file)
+        response = self.client.path.remove(self._test_remote_file)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['result']['status'], 'SUCCESS')
+
+
+class PathOperTestCase(BasePathTestCase):
+    def test_file_remove(self):
+        # Create task to delete file.
+        self.client.path.upload(self._test_remote_file, self._test_local_file)
+        response = self.client.path_oper.remove(self._test_remote_file)
+        self.assertEqual(response.status_code, 200)
+
+        # Check that the task completed.
+        response = self.client.path_oper.poll(response.json['url'])
+        status = response.json['result']['status']
+        self.assertEqual(status, 'SUCCESS')
+
+
+class PathTreeTestCase(BasePathTestCase):
+    def test_file_list(self):
+        self.client.path.upload(self._test_remote_file, self._test_local_file)
+        response = self.client.path_tree.list(self._test_remote_file)
+        self.assertEqual(response.status_code, 200)
+        self.client.path.remove(self._test_remote_file)
+        self.assertEqual(response.json['path'], self._test_remote_file)
+
+    def test_file_non_existent_list(self):
+        with self.assertRaises(SmartFileResponseException) as cm:
+            self.client.path_tree.list(self._test_remote_file)
+        self.assertEqual(cm.exception.status_code, 404)
+
+    def test_directory_list(self):
+        response = self.client.path_tree.list('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['path'], '/')
+
+    def test_directory_and_children_list(self):
+        response = self.client.path_tree.list('/', children=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('children', response.json)
+        self.assertGreater(len(response.json['children']), 0)
