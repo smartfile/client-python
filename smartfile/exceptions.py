@@ -25,7 +25,7 @@ class SmartFileResponseException(SmartFileException):
         self.response = response
         self.status_code = response.status_code
         if not response.json or not 'detail' in response.json:
-            self.detail = u'Check response for errors'
+            self.detail = u'Server error; check response for errors'
         else:
             self.detail = response.json['detail']
         super(SmartFileResponseException, self).__init__(*args, **kwargs)
