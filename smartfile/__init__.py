@@ -101,6 +101,27 @@ class UserAPI(_BaseAPI):
         return self._delete
 
 
+class GroupAPI(_BaseAPI):
+    """ Group API. """
+    _api_uri = ('group/', None, '/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
 class PathOperAPI(_BaseAPI):
     """ Path Oper API. """
     _api_uri = ('path/oper/', None, None, None, '/')
@@ -233,6 +254,10 @@ class API(object):
             api = cls(None, None, session=self._session)
             setattr(self, attr, api)
         return api
+
+    @property
+    def group(self):
+        return self._get_api('_api_group_obj', GroupAPI)
 
     @property
     def path(self):

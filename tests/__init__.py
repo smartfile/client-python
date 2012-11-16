@@ -22,6 +22,12 @@ class BaseAPITestCase(unittest.TestCase):
         'password': 'testpass2',
         'email': 'testuser2@example.com'
     }
+    _test_group = {
+        'name': 'Test Group'
+    }
+    _test_group2 = {
+        'name': 'Test Group2'
+    }
     _test_role = {
         'name': 'Test Role',
         'rights': {
@@ -80,6 +86,49 @@ class UserTestCase(BaseAPITestCase):
     def test_delete_user(self):
         self.client.user.create(self._test_user)
         response = self.client.user.delete(self._test_user['username'])
+        self.assertEqual(response.status_code, 204)
+
+
+class GroupTestCase(BaseAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(GroupTestCase, cls).setUpClass()
+        try:
+            cls.client.group.delete(cls._test_group['name'])
+        except:
+            pass
+        try:
+            cls.client.group.delete(cls._test_group2['name'])
+        except:
+            pass
+
+    def test_create_group(self):
+        response = self.client.group.create(self._test_group2)
+        self.assertEqual(response.status_code, 201)
+        self.client.group.delete(self._test_group2['name'])
+
+    def test_list_groups(self):
+        self.client.group.create(self._test_group)
+        response = self.client.group.read()
+        self.assertEqual(response.status_code, 200)
+        self.client.group.delete(self._test_group['name'])
+
+    def test_list_group(self):
+        self.client.group.create(self._test_group)
+        response = self.client.group.read(self._test_group['name'])
+        self.assertEqual(response.status_code, 200)
+        self.client.group.delete(self._test_group['name'])
+
+    def test_update_group(self):
+        self.client.group.create(self._test_group)
+        response = self.client.group.update(self._test_group2,
+                                            self._test_group['name'])
+        self.assertEqual(response.status_code, 200)
+        self.client.group.delete(self._test_group2['name'])
+
+    def test_delete_group(self):
+        self.client.group.create(self._test_group)
+        response = self.client.group.delete(self._test_group['name'])
         self.assertEqual(response.status_code, 204)
 
 
