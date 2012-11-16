@@ -43,6 +43,22 @@ class BaseAPITestCase(unittest.TestCase):
     _test_local_file = '/etc/motd'
     _test_remote_file = '/motd'
     _test_downloaded_file = 'motd.down'
+    _test_link = {
+        'name': 'Test Link',
+        'path': _test_remote_file,
+        'read': True,
+        'write': True,
+        'list': True,
+        'remove': True
+    }
+    _test_link2 = {
+        'name': 'Test Link2',
+        'path': _test_remote_file,
+        'read': True,
+        'write': True,
+        'list': True,
+        'remove': True
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -261,3 +277,55 @@ class PathTreeTestCase(BasePathTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('children', response.json)
         self.assertGreater(len(response.json['children']), 0)
+
+
+class LinkTestCase(BaseAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(LinkTestCase, cls).setUpClass()
+        cls.client.path.upload(cls._test_remote_file, cls._test_local_file)
+        try:
+            cls.client.link.delete(cls._test_link['name'])
+        except:
+            pass
+        try:
+            cls.client.link.delete(cls._test_link2['name'])
+        except:
+            pass
+
+    @classmethod
+    def tearDownClass(cls):
+        super(LinkTestCase, cls).tearDownClass()
+        cls.client.path.remove(cls._test_remote_file)
+
+    def test_create_link(self):
+        response = self.client.link.create(self._test_link)
+        self.assertEqual(response.status_code, 201)
+        self.client.link.delete(response.json['uid'])
+
+    def test_list_links(self):
+        response = self.client.link.create(self._test_link)
+        uid = response.json['uid']
+        response = self.client.link.read()
+        self.assertEqual(response.status_code, 200)
+        self.client.link.delete(uid)
+
+    def test_list_link(self):
+        response = self.client.link.create(self._test_link)
+        uid = response.json['uid']
+        response = self.client.link.read(uid)
+        self.assertEqual(response.status_code, 200)
+        self.client.link.delete(uid)
+
+    def test_update_link(self):
+        response = self.client.link.create(self._test_link)
+        response = self.client.link.update(self._test_link2,
+                                           response.json['uid'])
+        self.assertEqual(response.status_code, 200)
+        self.client.link.delete(response.json['uid'])
+
+    def test_delete_link(self):
+        response = self.client.link.create(self._test_link)
+        uid = response.json['uid']
+        response = self.client.link.delete(uid)
+        self.assertEqual(response.status_code, 204)
