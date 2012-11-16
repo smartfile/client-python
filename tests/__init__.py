@@ -83,6 +83,13 @@ class UserTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.client.user.delete(self._test_user['username'])
 
+    def test_update_user(self):
+        self.client.user.create(self._test_user)
+        response = self.client.user.update(self._test_user2,
+                                           self._test_user['username'])
+        self.assertEqual(response.status_code, 200)
+        self.client.user.delete(self._test_user2['username'])
+
     def test_delete_user(self):
         self.client.user.create(self._test_user)
         response = self.client.user.delete(self._test_user['username'])
