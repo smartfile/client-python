@@ -6,13 +6,16 @@ from os.path import basename
 from os.path import dirname
 
 from smartfile.decorators import response_processor
+from smartfile.decorators import throttle_wait
 
 
 class _BaseAPI(object):
     """ Base class for specific API endpoints (i.e., user, path). """
     _baseurl = 'http://localhost:8000/api/2/'
 
-    def __init__(self, api_key=None, api_pass=None, session=None, **kwargs):
+    def __init__(self, api_key=None, api_pass=None, session=None,
+                 throttle_wait=True, **kwargs):
+        self._throttle_wait = throttle_wait
         # Re-use existing session if provided.
         self._session = session or requests.session(
             auth=self._get_auth(api_key, api_pass))
@@ -57,13 +60,15 @@ class _BaseAPI(object):
     def _create(self, data=None, *args, **kwargs):
         """ The C in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return self._session.post(url, data=data, **kwargs)
+        return throttle_wait(self._session.post, self._throttle_wait)(
+            url, data=data, **kwargs)
 
     @response_processor
     def _read(self, *args, **kwargs):
         """ The R in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return self._session.get(url, **kwargs)
+        return throttle_wait(self._session.get, self._throttle_wait)(
+            url, **kwargs)
 
     @response_processor
     def _update(self, data=None, *args, **kwargs):
@@ -71,13 +76,15 @@ class _BaseAPI(object):
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
         if data is not None:
             kwargs['data'] = data
-        return self._session.post(url, **kwargs)
+        return throttle_wait(self._session.post, self._throttle_wait)(
+            url, **kwargs)
 
     @response_processor
     def _delete(self, *args, **kwargs):
         """ The D in CRUD. """
         url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return self._session.delete(url, **kwargs)
+        return throttle_wait(self._session.delete, self._throttle_wait)(
+            url, **kwargs)
 
 
 class UserAPI(_BaseAPI):
@@ -263,16 +270,19 @@ class API(object):
     This class provides a single interface to the various segments of the
     SmartFile API.
     """
-    def __init__(self, api_key=None, api_pass=None):
+    def __init__(self, api_key=None, api_pass=None, throttle_wait=True):
         # Create a session to be shared by all endpoints.
         base = _BaseAPI(api_key, api_pass)
         self._session = base._session
+
+        self._throttle_wait = throttle_wait
 
     def _get_api(self, attr, cls):
         """ Return the API endpoint.  Instantiate it if needed. """
         api = getattr(self, attr, None)
         if api is None:
-            api = cls(None, None, session=self._session)
+            api = cls(None, None, session=self._session,
+                      throttle_wait=self._throttle_wait)
             setattr(self, attr, api)
         return api
 

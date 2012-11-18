@@ -2,7 +2,6 @@
 
 import filecmp
 import os
-import time
 import unittest
 
 from smartfile import API
@@ -63,10 +62,6 @@ class BaseAPITestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = API()
-
-    def tearDown(self):
-        # Try to prevent running into the throttle else tests fail with a 503.
-        time.sleep(2)
 
 
 class UserTestCase(BaseAPITestCase):
