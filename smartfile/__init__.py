@@ -244,6 +244,27 @@ class RoleAPI(_BaseAPI):
         return self._delete
 
 
+class SiteAPI(_BaseAPI):
+    """ Site API. """
+    _api_uri = ('site/', None, '/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
 class LinkAPI(_BaseAPI):
     """ Link API. """
     _api_uri = ('link/', None, '/')
@@ -309,6 +330,10 @@ class API(object):
     @property
     def role(self):
         return self._get_api('_api_role_obj', RoleAPI)
+
+    @property
+    def site(self):
+        return self._get_api('_api_site_obj', SiteAPI)
 
     @property
     def user(self):
