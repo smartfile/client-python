@@ -11,13 +11,13 @@ from smartfile.exceptions import SmartFileResponseException
 class BaseAPITestCase(unittest.TestCase):
     _test_user = {
         'name': 'Test User',
-        'username': 'test_úsáideoir',
+        'username': 'test_user1',
         'password': 'testpass',
         'email': 'testuser@example.com'
     }
     _test_user2 = {
         'name': 'Test User2',
-        'username': 'test_úsáideoir2',
+        'username': 'test_user2',
         'password': 'testpass2',
         'email': 'testuser2@example.com'
     }
