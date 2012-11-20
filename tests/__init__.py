@@ -8,6 +8,8 @@ from smartfile import API
 from smartfile.exceptions import SmartFileResponseException
 
 
+@unittest.skipUnless('SMARTFILE_RUN_TESTS' in os.environ,
+                     'Unit tests for development server')
 class BaseAPITestCase(unittest.TestCase):
     _test_user = {
         'name': 'Test User',
