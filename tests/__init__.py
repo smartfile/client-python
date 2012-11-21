@@ -326,3 +326,11 @@ class LinkTestCase(BaseAPITestCase):
         uid = response.json['uid']
         response = self.client.link.delete(uid)
         self.assertEqual(response.status_code, 204)
+
+
+class PingTestCase(BaseAPITestCase):
+    def test_ping(self):
+        response = self.client.ping.read()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ping', response.json)
+        self.assertEqual(response.json['ping'], 'pong')

@@ -286,6 +286,15 @@ class LinkAPI(_BaseAPI):
         return self._delete
 
 
+class PingAPI(_BaseAPI):
+    """ Ping API. """
+    _api_uri = ('ping/',)
+
+    @property
+    def read(self):
+        return self._read
+
+
 class API(object):
     """
     This class provides a single interface to the various segments of the
@@ -326,6 +335,10 @@ class API(object):
     @property
     def path_tree(self):
         return self._get_api('_api_path_tree_obj', PathTreeAPI)
+
+    @property
+    def ping(self):
+        return self._get_api('_api_ping_obj', PingAPI)
 
     @property
     def role(self):
