@@ -152,16 +152,6 @@ class GroupTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 204)
 
 
-class BasePathTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(BasePathTestCase, cls).setUpClass()
-        try:
-            cls.client.path.remove(cls._test_remote_file)
-        except:
-            pass
-
-
 class RoleTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
@@ -207,6 +197,81 @@ class RoleTestCase(BaseAPITestCase):
         self.client.role.create(self._test_role)
         response = self.client.role.delete(self._test_role['name'])
         self.assertEqual(response.status_code, 204)
+
+
+class GroupQuotaTestCase(BaseAPITestCase):
+    _test_group_quota = {
+        'group': BaseAPITestCase._test_group['name'],
+        'enforcement': 'notify',
+        'interval': 'monthly',
+        'disk_bytes_limit': 1073741824,
+        'xfer_bytes_limit': None
+    }
+    _test_group_quota_update = {
+        'enforcement': 'disable',
+        'interval': 'weekly',
+        'disk_bytes_limit': None
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        super(GroupQuotaTestCase, cls).setUpClass()
+        try:
+            cls.client.group.create(cls._test_group)
+        except:
+            pass
+
+    @classmethod
+    def tearDownClass(cls):
+        super(GroupQuotaTestCase, cls).tearDownClass()
+        try:
+            cls.client.quota.group.delete(cls._test_group_quota['group'])
+        except:
+            pass
+        try:
+            cls.client.group.delete(cls._test_group['name'])
+        except:
+            pass
+
+    def test_create_group_quota(self):
+        response = self.client.quota.group.create(self._test_group_quota)
+        self.assertEqual(response.status_code, 201)
+        self.client.quota.group.delete(self._test_group_quota['group'])
+
+    def test_list_group_quotas(self):
+        self.client.quota.group.create(self._test_group_quota)
+        response = self.client.quota.group.read()
+        self.assertEqual(response.status_code, 200)
+        self.client.quota.group.delete(self._test_group_quota['group'])
+
+    def test_list_group_quota(self):
+        self.client.quota.group.create(self._test_group_quota)
+        response = self.client.quota.group.read(self._test_group['name'])
+        self.assertEqual(response.status_code, 200)
+        self.client.quota.group.delete(self._test_group_quota['group'])
+
+    def test_update_group_quota(self):
+        self.client.quota.group.create(self._test_group_quota)
+        response = self.client.quota.group.update(
+            self._test_group_quota_update, self._test_group_quota['group'])
+        self.assertEqual(response.status_code, 200)
+        self.client.quota.group.delete(self._test_group_quota['group'])
+
+    def test_delete_group_quota(self):
+        self.client.quota.group.create(self._test_group_quota)
+        response = self.client.quota.group.delete(
+            self._test_group_quota['group'])
+        self.assertEqual(response.status_code, 204)
+
+
+class BasePathTestCase(BaseAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(BasePathTestCase, cls).setUpClass()
+        try:
+            cls.client.path.remove(cls._test_remote_file)
+        except:
+            pass
 
 
 class PathTestCase(BasePathTestCase):

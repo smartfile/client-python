@@ -87,6 +87,32 @@ class _BaseAPI(object):
             url, **kwargs)
 
 
+class _APIContainer(object):
+    """
+    This class is a base class to provide a single interface to various
+    segments of API endpoint(s).
+    """
+    def __init__(self, api_key=None, api_pass=None, session=None,
+                 throttle_wait=True):
+        if session:
+            self._session = session
+        else:
+            # Create a session to be shared by all endpoints.
+            base = _BaseAPI(api_key, api_pass)
+            self._session = base._session
+
+        self._throttle_wait = throttle_wait
+
+    def _get_api(self, attr, cls):
+        """ Return the API endpoint.  Instantiate it if needed. """
+        api = getattr(self, attr, None)
+        if api is None:
+            api = cls(None, None, session=self._session,
+                      throttle_wait=self._throttle_wait)
+            setattr(self, attr, api)
+        return api
+
+
 class UserAPI(_BaseAPI):
     """ User API. """
     _api_uri = ('user/', None, '/')
@@ -127,6 +153,80 @@ class GroupAPI(_BaseAPI):
     @property
     def delete(self):
         return self._delete
+
+
+class RoleAPI(_BaseAPI):
+    """ Role API. """
+    _api_uri = ('role/', None, '/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
+class SiteAPI(_BaseAPI):
+    """ Site API. """
+    _api_uri = ('site/', None, '/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
+class BaseQuotaAPI(_BaseAPI):
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
+class GroupQuotaAPI(BaseQuotaAPI):
+    _api_uri = ('quota/group/', None, '/')
+
+
+class QuotaAPI(_APIContainer):
+    """
+    This class provides a single interface to the various segments of the Quota
+    API.
+    """
+    @property
+    def group(self):
+        return self._get_api('_api_group_obj', GroupQuotaAPI)
 
 
 class PathOperAPI(_BaseAPI):
@@ -223,48 +323,6 @@ class PathAPI(_BaseAPI):
             None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
 
 
-class RoleAPI(_BaseAPI):
-    """ Role API. """
-    _api_uri = ('role/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class SiteAPI(_BaseAPI):
-    """ Site API. """
-    _api_uri = ('site/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
 class LinkAPI(_BaseAPI):
     """ Link API. """
     _api_uri = ('link/', None, '/')
@@ -295,27 +353,11 @@ class PingAPI(_BaseAPI):
         return self._read
 
 
-class API(object):
+class API(_APIContainer):
     """
     This class provides a single interface to the various segments of the
     SmartFile API.
     """
-    def __init__(self, api_key=None, api_pass=None, throttle_wait=True):
-        # Create a session to be shared by all endpoints.
-        base = _BaseAPI(api_key, api_pass)
-        self._session = base._session
-
-        self._throttle_wait = throttle_wait
-
-    def _get_api(self, attr, cls):
-        """ Return the API endpoint.  Instantiate it if needed. """
-        api = getattr(self, attr, None)
-        if api is None:
-            api = cls(None, None, session=self._session,
-                      throttle_wait=self._throttle_wait)
-            setattr(self, attr, api)
-        return api
-
     @property
     def group(self):
         return self._get_api('_api_group_obj', GroupAPI)
@@ -339,6 +381,10 @@ class API(object):
     @property
     def ping(self):
         return self._get_api('_api_ping_obj', PingAPI)
+
+    @property
+    def quota(self):
+        return self._get_api('_api_quota_obj', QuotaAPI)
 
     @property
     def role(self):
