@@ -228,6 +228,10 @@ class BaseQuotaTestCase(BaseAPITestCase):
             cls.entity_api.create(cls._test_entity)
         except:
             pass
+        try:
+            cls.quota_api.delete(cls._test_quota[cls._test_quota_type])
+        except:
+            pass
 
     @classmethod
     def tearDownClass(cls):

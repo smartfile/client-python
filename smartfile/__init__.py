@@ -219,6 +219,10 @@ class GroupQuotaAPI(BaseQuotaAPI):
     _api_uri = ('quota/group/', None, '/')
 
 
+class SiteQuotaAPI(BaseQuotaAPI):
+    _api_uri = ('quota/site/', None, '/')
+
+
 class UserQuotaAPI(BaseQuotaAPI):
     _api_uri = ('quota/user/', None, '/')
 
@@ -231,6 +235,10 @@ class QuotaAPI(_APIContainer):
     @property
     def group(self):
         return self._get_api('_api_group_obj', GroupQuotaAPI)
+
+    @property
+    def site(self):
+        return self._get_api('_api_site_obj', SiteQuotaAPI)
 
     @property
     def user(self):

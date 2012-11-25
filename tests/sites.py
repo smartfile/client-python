@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from tests import BaseAPITestCase
+from tests import BaseQuotaTestCase
 
 
 class SiteTestCase(BaseAPITestCase):
@@ -59,3 +60,9 @@ class SiteTestCase(BaseAPITestCase):
     def test_5_delete_site(self):
         response = self.client.site.delete(self._test_site2['name'])
         self.assertEqual(response.status_code, 204)
+
+
+class SiteQuotaTestCase(BaseQuotaTestCase):
+    _test_quota_type = 'site'
+    _test_entity = SiteTestCase._test_site1
+    _test_entity_key = 'name'
