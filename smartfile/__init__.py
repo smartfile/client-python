@@ -219,6 +219,10 @@ class GroupQuotaAPI(BaseQuotaAPI):
     _api_uri = ('quota/group/', None, '/')
 
 
+class UserQuotaAPI(BaseQuotaAPI):
+    _api_uri = ('quota/user/', None, '/')
+
+
 class QuotaAPI(_APIContainer):
     """
     This class provides a single interface to the various segments of the Quota
@@ -227,6 +231,10 @@ class QuotaAPI(_APIContainer):
     @property
     def group(self):
         return self._get_api('_api_group_obj', GroupQuotaAPI)
+
+    @property
+    def user(self):
+        return self._get_api('_api_user_obj', UserQuotaAPI)
 
 
 class PathOperAPI(_BaseAPI):

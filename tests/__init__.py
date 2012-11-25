@@ -199,69 +199,91 @@ class RoleTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 204)
 
 
-class GroupQuotaTestCase(BaseAPITestCase):
-    _test_group_quota = {
-        'group': BaseAPITestCase._test_group['name'],
-        'enforcement': 'notify',
-        'interval': 'monthly',
-        'disk_bytes_limit': 1073741824,
-        'xfer_bytes_limit': None
-    }
-    _test_group_quota_update = {
-        'enforcement': 'disable',
-        'interval': 'weekly',
-        'disk_bytes_limit': None
-    }
-
+class BaseQuotaTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
-        super(GroupQuotaTestCase, cls).setUpClass()
+        """ Setup the class based upon the child class. """
+        # Test quota and quota update.
+        cls._test_quota = {
+            cls._test_quota_type: cls._test_entity[cls._test_entity_key],
+            'enforcement': 'notify',
+            'interval': 'monthly',
+            'disk_bytes_limit': 1073741824,
+            'xfer_bytes_limit': None
+        }
+        cls._test_quota_update = {
+            'enforcement': 'disable',
+            'interval': 'weekly',
+            'disk_bytes_limit': None
+        }
+
+        super(BaseQuotaTestCase, cls).setUpClass()
+
+        # Set the API of the entity and API of the entity quota.
+        cls.entity_api = getattr(cls.client, cls._test_quota_type)
+        cls.quota_api = getattr(cls.client.quota, cls._test_quota_type)
+
+        # Create an entity for the quota.
         try:
-            cls.client.group.create(cls._test_group)
+            cls.entity_api.create(cls._test_entity)
         except:
             pass
 
     @classmethod
     def tearDownClass(cls):
-        super(GroupQuotaTestCase, cls).tearDownClass()
+        # Remove any leftover quota and the entity used for testing.
+        super(BaseQuotaTestCase, cls).tearDownClass()
+        name = cls._test_quota[cls._test_quota_type]
         try:
-            cls.client.quota.group.delete(cls._test_group_quota['group'])
+            cls.quota_api.delete(name)
         except:
             pass
         try:
-            cls.client.group.delete(cls._test_group['name'])
+            cls.entity_api.delete(name)
         except:
             pass
 
-    def test_create_group_quota(self):
-        response = self.client.quota.group.create(self._test_group_quota)
+    def test_create_quota(self):
+        response = self.quota_api.create(self._test_quota)
         self.assertEqual(response.status_code, 201)
-        self.client.quota.group.delete(self._test_group_quota['group'])
+        self.quota_api.delete(self._test_quota[self._test_quota_type])
 
-    def test_list_group_quotas(self):
-        self.client.quota.group.create(self._test_group_quota)
-        response = self.client.quota.group.read()
+    def test_list_quotas(self):
+        self.quota_api.create(self._test_quota)
+        response = self.quota_api.read()
         self.assertEqual(response.status_code, 200)
-        self.client.quota.group.delete(self._test_group_quota['group'])
+        self.quota_api.delete(self._test_quota[self._test_quota_type])
 
-    def test_list_group_quota(self):
-        self.client.quota.group.create(self._test_group_quota)
-        response = self.client.quota.group.read(self._test_group['name'])
+    def test_list_quota(self):
+        self.quota_api.create(self._test_quota)
+        response = self.quota_api.read(self._test_quota[self._test_quota_type])
         self.assertEqual(response.status_code, 200)
-        self.client.quota.group.delete(self._test_group_quota['group'])
+        self.quota_api.delete(self._test_quota[self._test_quota_type])
 
-    def test_update_group_quota(self):
-        self.client.quota.group.create(self._test_group_quota)
-        response = self.client.quota.group.update(
-            self._test_group_quota_update, self._test_group_quota['group'])
+    def test_update_quota(self):
+        self.quota_api.create(self._test_quota)
+        response = self.quota_api.update(
+            self._test_quota_update, self._test_quota[self._test_quota_type])
         self.assertEqual(response.status_code, 200)
-        self.client.quota.group.delete(self._test_group_quota['group'])
+        self.quota_api.delete(self._test_quota[self._test_quota_type])
 
-    def test_delete_group_quota(self):
-        self.client.quota.group.create(self._test_group_quota)
-        response = self.client.quota.group.delete(
-            self._test_group_quota['group'])
+    def test_delete_quota(self):
+        self.quota_api.create(self._test_quota)
+        response = self.quota_api.delete(
+            self._test_quota[self._test_quota_type])
         self.assertEqual(response.status_code, 204)
+
+
+class GroupQuotaTestCase(BaseQuotaTestCase):
+    _test_quota_type = 'group'
+    _test_entity = BaseAPITestCase._test_group
+    _test_entity_key = 'name'
+
+
+class UserQuotaTestCase(BaseQuotaTestCase):
+    _test_quota_type = 'user'
+    _test_entity = BaseAPITestCase._test_user
+    _test_entity_key = 'username'
 
 
 class BasePathTestCase(BaseAPITestCase):
