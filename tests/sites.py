@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from tests import BaseAPITestCase
-from tests import BaseQuotaTestCase
+from tests import BaseQuotaMixin
 
 
 class SiteTestCase(BaseAPITestCase):
@@ -62,7 +62,7 @@ class SiteTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 204)
 
 
-class SiteQuotaTestCase(BaseQuotaTestCase):
+class SiteQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
     _test_quota_type = 'site'
     _test_entity = SiteTestCase._test_site1
     _test_entity_key = 'name'

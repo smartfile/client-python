@@ -8,9 +8,7 @@ from smartfile import API
 from smartfile.exceptions import SmartFileResponseException
 
 
-@unittest.skipUnless('SMARTFILE_RUN_TESTS' in os.environ,
-                     'Unit tests for development server')
-class BaseAPITestCase(unittest.TestCase):
+class BaseTestMixin(object):
     _test_user = {
         'name': 'Test User',
         'username': 'test_user1',
@@ -61,6 +59,10 @@ class BaseAPITestCase(unittest.TestCase):
         'remove': True
     }
 
+
+@unittest.skipUnless('SMARTFILE_RUN_TESTS' in os.environ,
+                     'Unit tests for development server')
+class BaseAPITestCase(BaseTestMixin, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = API()
@@ -199,9 +201,11 @@ class RoleTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 204)
 
 
-class BaseQuotaTestCase(BaseAPITestCase):
+class BaseQuotaMixin(object):
     @classmethod
     def setUpClass(cls):
+        super(BaseQuotaMixin, cls).setUpClass()
+
         """ Setup the class based upon the child class. """
         # Test quota and quota update.
         cls._test_quota = {
@@ -216,8 +220,6 @@ class BaseQuotaTestCase(BaseAPITestCase):
             'interval': 'weekly',
             'disk_bytes_limit': None
         }
-
-        super(BaseQuotaTestCase, cls).setUpClass()
 
         # Set the API of the entity and API of the entity quota.
         cls.entity_api = getattr(cls.client, cls._test_quota_type)
@@ -236,7 +238,7 @@ class BaseQuotaTestCase(BaseAPITestCase):
     @classmethod
     def tearDownClass(cls):
         # Remove any leftover quota and the entity used for testing.
-        super(BaseQuotaTestCase, cls).tearDownClass()
+        super(BaseQuotaMixin, cls).tearDownClass()
         name = cls._test_quota[cls._test_quota_type]
         try:
             cls.quota_api.delete(name)
@@ -278,13 +280,13 @@ class BaseQuotaTestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, 204)
 
 
-class GroupQuotaTestCase(BaseQuotaTestCase):
+class GroupQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
     _test_quota_type = 'group'
     _test_entity = BaseAPITestCase._test_group
     _test_entity_key = 'name'
 
 
-class UserQuotaTestCase(BaseQuotaTestCase):
+class UserQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
     _test_quota_type = 'user'
     _test_entity = BaseAPITestCase._test_user
     _test_entity_key = 'username'
