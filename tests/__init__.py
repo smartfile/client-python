@@ -401,6 +401,12 @@ class GroupAccessTestCase(BaseAccessMixin, BaseAPITestCase):
     _test_entity_key = 'name'
 
 
+class UserAccessTestCase(BaseAccessMixin, BaseAPITestCase):
+    _test_access_type = 'user'
+    _test_entity = BaseAPITestCase._test_user
+    _test_entity_key = 'username'
+
+
 class BasePathTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):

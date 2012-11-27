@@ -288,6 +288,10 @@ class GroupAccessAPI(BaseQuotaAPI):
     _api_uri = ('access/group/', None, None, '/')
 
 
+class UserAccessAPI(BaseQuotaAPI):
+    _api_uri = ('access/user/', None, None, '/')
+
+
 class AccessAPI(_APIContainer):
     """
     This class provides a single interface to the various segments of the
@@ -296,6 +300,10 @@ class AccessAPI(_APIContainer):
     @property
     def group(self):
         return self._get_api('_api_group_obj', GroupAccessAPI)
+
+    @property
+    def user(self):
+        return self._get_api('_api_user_obj', UserAccessAPI)
 
 
 class PathOperAPI(_BaseAPI):
