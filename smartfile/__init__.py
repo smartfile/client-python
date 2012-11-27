@@ -292,6 +292,14 @@ class UserAccessAPI(BaseQuotaAPI):
     _api_uri = ('access/user/', None, None, '/')
 
 
+class PathAccessAPI(_BaseAPI):
+    _api_uri = ('access/path/', None, '/')
+
+    @property
+    def read(self):
+        return self._read
+
+
 class AccessAPI(_APIContainer):
     """
     This class provides a single interface to the various segments of the
@@ -304,6 +312,10 @@ class AccessAPI(_APIContainer):
     @property
     def user(self):
         return self._get_api('_api_user_obj', UserAccessAPI)
+
+    @property
+    def path(self):
+        return self._get_api('_api_path_obj', PathAccessAPI)
 
 
 class PathOperAPI(_BaseAPI):

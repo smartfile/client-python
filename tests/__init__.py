@@ -407,6 +407,14 @@ class UserAccessTestCase(BaseAccessMixin, BaseAPITestCase):
     _test_entity_key = 'username'
 
 
+class PathAccessTestCase(BaseAPITestCase):
+    def test_list_entity_access(self):
+        """ List all accesses (using ID) of a path. """
+        response = self.client.path_tree.read('/')
+        response = self.client.access.path.read(response.json['id'])
+        self.assertEqual(response.status_code, 200)
+
+
 class BasePathTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):
