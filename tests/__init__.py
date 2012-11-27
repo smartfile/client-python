@@ -292,6 +292,115 @@ class UserQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
     _test_entity_key = 'username'
 
 
+class BaseAccessMixin(object):
+    @classmethod
+    def setUpClass(cls):
+        """ Setup the class based upon the child class. """
+        super(BaseAccessMixin, cls).setUpClass()
+
+        cls._test_access = {
+            cls._test_access_type: cls._test_entity[cls._test_entity_key],
+            'path': '/',
+            'read': True,
+            'write': True,
+            'list': False,
+            'remove': False
+        }
+        cls._test_access_update = {
+            'read': False,
+            'remove': True
+        }
+
+        # Set the API of the entity and API of the entity access.
+        cls.entity_api = getattr(cls.client, cls._test_access_type)
+        cls.access_api = getattr(cls.client.access, cls._test_access_type)
+
+        # Create a path and an entity for the access.
+        try:
+            cls.client.path.upload(cls._test_remote_file, cls._test_local_file)
+        except:
+            pass
+        try:
+            cls.entity_api.create(cls._test_entity)
+        except:
+            pass
+        try:
+            cls.access_api.delete(cls._test_access[cls._test_access_type])
+        except:
+            pass
+
+    @classmethod
+    def tearDownClass(cls):
+        # Remove any leftover access, the entity and the path used for testing.
+        super(BaseAccessMixin, cls).tearDownClass()
+        name = cls._test_access[cls._test_access_type]
+        try:
+            cls.access_api.delete(name)
+        except:
+            pass
+        try:
+            cls.entity_api.delete(name)
+        except:
+            pass
+        try:
+            cls.client.path.delete(cls._test_remote_file)
+        except:
+            pass
+
+    def test_create_access(self):
+        response = self.access_api.create(self._test_access)
+        self.assertEqual(response.status_code, 201)
+        self.access_api.delete(self._test_access[self._test_access_type],
+                               response.json['id'])
+
+    def test_list_accesses(self):
+        """ List all accesses of access type. """
+        test_access = self.access_api.create(self._test_access)
+        response = self.access_api.read()
+        self.assertEqual(response.status_code, 200)
+        self.access_api.delete(self._test_access[self._test_access_type],
+                               test_access.json['id'])
+
+    def test_list_entity_accesses(self):
+        """ List all accesses of entity. """
+        test_access = self.access_api.create(self._test_access)
+        response = self.access_api.read(
+            self._test_access[self._test_access_type])
+        self.assertEqual(response.status_code, 200)
+        self.access_api.delete(self._test_access[self._test_access_type],
+                               test_access.json['id'])
+
+    def test_list_entity_access(self):
+        """ List specific access (using ID) of entity. """
+        test_access = self.access_api.create(self._test_access)
+        response = self.access_api.read(
+            self._test_access[self._test_access_type], test_access.json['id'])
+        self.assertEqual(response.status_code, 200)
+        self.access_api.delete(self._test_access[self._test_access_type],
+                               test_access.json['id'])
+
+    def test_update_access(self):
+        test_access = self.access_api.create(self._test_access)
+        response = self.access_api.update(
+            self._test_access_update,
+            self._test_access[self._test_access_type], test_access.json['id'])
+        self.assertEqual(response.status_code, 200)
+        self.access_api.delete(self._test_access[self._test_access_type],
+                               test_access.json['id'])
+
+    def test_delete_access(self):
+        test_access = self.access_api.create(self._test_access)
+        response = self.access_api.delete(
+            self._test_access[self._test_access_type], test_access.json['id'])
+        self.assertEqual(response.status_code, 204)
+
+
+class GroupAccessTestCase(BaseAccessMixin, BaseAPITestCase):
+    _test_access_type = 'group'
+    _test_entity = BaseAPITestCase._test_group
+    _test_entity_key = 'name'
+
+
 class BasePathTestCase(BaseAPITestCase):
     @classmethod
     def setUpClass(cls):

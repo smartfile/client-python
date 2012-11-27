@@ -197,6 +197,27 @@ class SiteAPI(_BaseAPI):
         return self._delete
 
 
+class LinkAPI(_BaseAPI):
+    """ Link API. """
+    _api_uri = ('link/', None, '/')
+
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
 class BaseQuotaAPI(_BaseAPI):
     @property
     def create(self):
@@ -243,6 +264,38 @@ class QuotaAPI(_APIContainer):
     @property
     def user(self):
         return self._get_api('_api_user_obj', UserQuotaAPI)
+
+
+class BaseAccessAPI(_BaseAPI):
+    @property
+    def create(self):
+        return self._create
+
+    @property
+    def read(self):
+        return self._read
+
+    @property
+    def update(self):
+        return self._update
+
+    @property
+    def delete(self):
+        return self._delete
+
+
+class GroupAccessAPI(BaseQuotaAPI):
+    _api_uri = ('access/group/', None, None, '/')
+
+
+class AccessAPI(_APIContainer):
+    """
+    This class provides a single interface to the various segments of the
+    Access API.
+    """
+    @property
+    def group(self):
+        return self._get_api('_api_group_obj', GroupAccessAPI)
 
 
 class PathOperAPI(_BaseAPI):
@@ -339,27 +392,6 @@ class PathAPI(_BaseAPI):
             None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
 
 
-class LinkAPI(_BaseAPI):
-    """ Link API. """
-    _api_uri = ('link/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
 class PingAPI(_BaseAPI):
     """ Ping API. """
     _api_uri = ('ping/',)
@@ -374,6 +406,10 @@ class API(_APIContainer):
     This class provides a single interface to the various segments of the
     SmartFile API.
     """
+    @property
+    def access(self):
+        return self._get_api('_api_access_obj', AccessAPI)
+
     @property
     def group(self):
         return self._get_api('_api_group_obj', GroupAPI)
