@@ -54,10 +54,11 @@ class Connection(object):
         # strings).
         url = '/'.join(components).replace('//', '/')
         url = '/'.join((self.base_url.rstrip('/'), url))
+        # Use string formatting to merge the arguments into the URL.
+        url = url.format(**kwargs)
         if not url.endswith('/'):
             url += '/'
-        # Use string formatting to merge the arguments into the URL.
-        return url.format(**kwargs)
+        return url
 
     def _request(self, request, url, **kwargs):
         """Performs a single HTTP request, raises an exception for >=400
@@ -340,6 +341,10 @@ class PathAccess(Endpoint):
     fragments = ('access', 'path', )
 
 
+class GroupAccess(Endpoint):
+    fragments = ('access', 'group', )
+
+
 class AccessAPI(Container):
     endpoints = {
         'user': UserAccess,
@@ -383,6 +388,14 @@ class WhoAmI(Endpoint):
 
 class Link(Endpoint):
     fragments = ('link', )
+
+
+class User(Endpoint):
+    fragments = ('user', )
+
+
+class Site(Endpoint):
+    fragments = ('site', )
 
 
 class Role(Endpoint):
