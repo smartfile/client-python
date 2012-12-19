@@ -16,7 +16,7 @@ The main class in this library is API. It presents a taxonomy of the SmartFile
 API that closely resembles the API url structure. You can create an instance
 of the API object, then access any API functions using that taxonomy.
 
-::
+.. code:: python
 
     >>> import pprint
     >>> from smartfile import API
@@ -42,7 +42,7 @@ You can also deal directly with specific endpoints, this is useful if you are
 only going to deal with say, paths, and don't want to type the full namespace
 for each API call.
 
-::
+.. code:: python
 
     >>> from smartfile import PathTree
     >>> api = PathTree(key='**********', password='**********')
@@ -68,7 +68,7 @@ file-like objects. Care is taken to stream data to and from the server, so
 at no point are large files completely loaded into memory. Using file-like
 objects allows for streaming to/from any source.
 
-::
+.. code:: python
 
     >>> from StringIO import StringIO
     >>> from smartfile import PathData
@@ -99,7 +99,7 @@ is created, and the API can be used to poll the status of the task. Tasks
 provide a convenience function wait() that will block until the tasks
 completes. An optional timeout allows wait() to return before completion.
 
-::
+.. code:: python
 
     >>> from smartfile import API
     >>> api = API(key='**********', password='**********')
