@@ -1,471 +1,408 @@
+import re
 import os
 import requests
 import time
 
+from requests.exceptions import RequestException
+
 from os.path import basename
 from os.path import dirname
 
-from smartfile.decorators import response_processor
-from smartfile.decorators import throttle_wait
+from smartfile.errors import APIError
+from smartfile.errors import RequestError
+from smartfile.errors import ResponseError
 
 
-class _BaseAPI(object):
-    """ Base class for specific API endpoints (i.e., user, path). """
-    _baseurl = 'http://localhost:8000/api/2/'
+SMARTFILE_API_URL = 'https://app.smartfile.com/api/'
+SMARTFILE_API_VER = '2.0'
 
-    def __init__(self, api_key=None, api_pass=None, session=None,
-                 throttle_wait=True, **kwargs):
-        self._throttle_wait = throttle_wait
-        # Re-use existing session if provided.
-        self._session = session or requests.session(
-            auth=self._get_auth(api_key, api_pass))
-
-    def _get_auth(self, api_key, api_pass):
-        """ Get API key and password. """
-        if api_key is None and api_pass is None:
-            # Pull the API key and password from the environment.
-            try:
-                api_key = os.environ['SMARTFILE_API_KEY']
-                api_pass = os.environ['SMARTFILE_API_PASS']
-            except KeyError:
-                raise Exception(
-                    'Set key/password (SMARTFILE_API_KEY, SMARTFILE_API_PASS) in environment')
-
-        return api_key, api_pass
-
-    def _gen_url(self, uri_args=(), baseurl=None):
-        """ Join segments onto URL to call API. """
-        # Generate list of path components from URI template and provided
-        # arguments.  'None' in the template is replaced with a path if there
-        # is one provided by the caller.
-        #
-        # NOTE:  uri_iter raises StopIteration if it runs out of elements.
-        # This is caught by the generator which stops before all the elements
-        # in self._api_url are used.
-        uri_iter = iter(uri_args)
-        paths = (next(uri_iter) if x is None else x for x in self._api_uri)
-
-        # Concatenate the path components without '//'.
-        url = baseurl or self._baseurl
-        for arg in paths:
-            if isinstance(arg, basestring) and arg.startswith('/'):
-                arg = arg[1:]
-            if arg != '/':
-                sep = '' if url.endswith('/') else '/'
-                url = '{0}{1}{2}'.format(url, sep, arg)
-
-        return url
-
-    @response_processor
-    def _create(self, data=None, *args, **kwargs):
-        """ The C in CRUD. """
-        url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return throttle_wait(self._session.post, self._throttle_wait)(
-            url, data=data, **kwargs)
-
-    @response_processor
-    def _read(self, *args, **kwargs):
-        """ The R in CRUD. """
-        url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return throttle_wait(self._session.get, self._throttle_wait)(
-            url, **kwargs)
-
-    @response_processor
-    def _update(self, data=None, *args, **kwargs):
-        """ The U in CRUD. """
-        url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        if data is not None:
-            kwargs['data'] = data
-        return throttle_wait(self._session.post, self._throttle_wait)(
-            url, **kwargs)
-
-    @response_processor
-    def _delete(self, *args, **kwargs):
-        """ The D in CRUD. """
-        url = self._gen_url(args, baseurl=kwargs.pop('baseurl', None))
-        return throttle_wait(self._session.delete, self._throttle_wait)(
-            url, **kwargs)
+THROTTLE = re.compile('^next=([^ ]+) sec$')
 
 
-class _APIContainer(object):
-    """
-    This class is a base class to provide a single interface to various
-    segments of API endpoint(s).
-    """
-    def __init__(self, api_key=None, api_pass=None, session=None,
+class Connection(object):
+    "Manages the HTTP portion of the API."
+    def __init__(self, url=None, version=None, key=None, password=None,
                  throttle_wait=True):
-        if session:
-            self._session = session
+        "Collects everything needed to access the API, url, key, password."
+        self.base_url = url or os.environ.get('SMARTFILE_API_URL', SMARTFILE_API_URL)
+        self.base_ver = version or os.environ.get('SMARTFILE_API_VER', SMARTFILE_API_VER)
+        self.throttle_wait = throttle_wait
+        self._session = requests.session(auth=self.get_auth(key, password))
+
+    def get_auth(self, key=None, password=None):
+        "Tries to determine the authentication parameters (key and password)."
+        if key is None:
+            key = os.environ.get('SMARTFILE_API_KEY')
+        if password is None:
+            password = os.environ.get('SMARTFILE_API_PASSWORD')
+        if key is None or password is None:
+            raise APIError('Please provide an API key and password. Use '
+                           'arguments or environment variables.')
+        return key, password
+
+    def get_url(self, components, *args, **kwargs):
+        "Concatenate the base_url, URL components and then merge in arguments."
+        # Remove any leading or trailing slashes from URL components.
+        components = [unicode(x).strip('/') for x in components]
+        kwargs = dict([(k, unicode(v).strip('/')) for k, v in kwargs.items()])
+        # Inject the base URL and API version as the first items. Strip any
+        # trailing '/'.
+        components = [
+            self.base_ver,
+        ] + components
+        # Join all the components into one uniform URL (containing format
+        # strings).
+        url = '/'.join(components).replace('//', '/')
+        url = '/'.join((self.base_url.rstrip('/'), url))
+        if not url.endswith('/'):
+            url += '/'
+        # Use string formatting to merge the arguments into the URL.
+        return url.format(**kwargs)
+
+    def _request(self, request, url, **kwargs):
+        """Performs a single HTTP request, raises an exception for >=400
+        status. All kwargs are passed to the requests library."""
+        try:
+            response = request(url, **kwargs)
+        except RequestException, e:
+            raise RequestError(e)
         else:
-            # Create a session to be shared by all endpoints.
-            base = _BaseAPI(api_key, api_pass)
-            self._session = base._session
-
-        self._throttle_wait = throttle_wait
-
-    def _get_api(self, attr, cls):
-        """ Return the API endpoint.  Instantiate it if needed. """
-        api = getattr(self, attr, None)
-        if api is None:
-            api = cls(None, None, session=self._session,
-                      throttle_wait=self._throttle_wait)
-            setattr(self, attr, api)
-        return api
-
-
-class UserAPI(_BaseAPI):
-    """ User API. """
-    _api_uri = ('user/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class GroupAPI(_BaseAPI):
-    """ Group API. """
-    _api_uri = ('group/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class RoleAPI(_BaseAPI):
-    """ Role API. """
-    _api_uri = ('role/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class SiteAPI(_BaseAPI):
-    """ Site API. """
-    _api_uri = ('site/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class LinkAPI(_BaseAPI):
-    """ Link API. """
-    _api_uri = ('link/', None, '/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class BaseQuotaAPI(_BaseAPI):
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class GroupQuotaAPI(BaseQuotaAPI):
-    _api_uri = ('quota/group/', None, '/')
-
-
-class SiteQuotaAPI(BaseQuotaAPI):
-    _api_uri = ('quota/site/', None, '/')
-
-
-class UserQuotaAPI(BaseQuotaAPI):
-    _api_uri = ('quota/user/', None, '/')
-
-
-class QuotaAPI(_APIContainer):
-    """
-    This class provides a single interface to the various segments of the Quota
-    API.
-    """
-    @property
-    def group(self):
-        return self._get_api('_api_group_obj', GroupQuotaAPI)
-
-    @property
-    def site(self):
-        return self._get_api('_api_site_obj', SiteQuotaAPI)
-
-    @property
-    def user(self):
-        return self._get_api('_api_user_obj', UserQuotaAPI)
-
-
-class BaseAccessAPI(_BaseAPI):
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-    @property
-    def update(self):
-        return self._update
-
-    @property
-    def delete(self):
-        return self._delete
-
-
-class GroupAccessAPI(BaseQuotaAPI):
-    _api_uri = ('access/group/', None, None, '/')
-
-
-class UserAccessAPI(BaseQuotaAPI):
-    _api_uri = ('access/user/', None, None, '/')
-
-
-class PathAccessAPI(_BaseAPI):
-    _api_uri = ('access/path/', None, '/')
-
-    @property
-    def read(self):
-        return self._read
-
-
-class AccessAPI(_APIContainer):
-    """
-    This class provides a single interface to the various segments of the
-    Access API.
-    """
-    @property
-    def group(self):
-        return self._get_api('_api_group_obj', GroupAccessAPI)
-
-    @property
-    def user(self):
-        return self._get_api('_api_user_obj', UserAccessAPI)
-
-    @property
-    def path(self):
-        return self._get_api('_api_path_obj', PathAccessAPI)
-
-
-class PathOperAPI(_BaseAPI):
-    """ Path Oper API. """
-    _api_uri = ('path/oper/', None, None, None, '/')
-
-    def remove(self, path):
-        """ Create task to remove file system object(s). """
-        return super(PathOperAPI, self)._create({'path': path}, 'remove/')
-
-    def poll(self, url, checks=5, check_timeout=2):
-        """
-        Poll a URL until a non-200 response or the result of operation is
-        SUCCESS.  Check a few times with a sleep between each check.
-        """
-        while checks > 0:
-            response = self._session.get(url)
-            if (response.status_code != 200 or
-                response.json['result']['status'] == 'SUCCESS'):
-                break
-            checks -= 1
-            time.sleep(check_timeout)
-
+            if response.status_code >= 400:
+                raise ResponseError(response)
         return response
 
+    def request(self, method, url, **kwargs):
+        """Performs the HTTP request and handles the response. It may retry the
+        request under certain circumstances. All kwargs are passed to 
+        Connection._request()."""
+        request = getattr(self._session, method, None)
+        if not callable(request):
+            raise RequestError('Invalid method %s' % method)
+        trys, retrys = 0, 3
+        while True:
+            if trys == retrys:
+                raise RequestError('Could not complete request after %s trys.' % trys)
+            trys += 1
+            try:
+                return self._request(request, url, **kwargs)
+            except ResponseError, e:
+                if self.throttle_wait and e.status_code == 503:
+                    m = THROTTLE.match(e.response.headers['x-throttle'])
+                    if m:
+                        wait = float(m.group(1))
+                        time.sleep(wait)
+                        continue
+                raise
 
-class PathTreeAPI(_BaseAPI):
-    """ Path Tree API. """
-    _api_uri = ('path/tree/', None)
 
-    def read(self, path='/', children=False, *args, **kwargs):
+class Endpoint(object):
+    fragments = ()
+
+    def __init__(self, connection=None, **kwargs):
+        "Use the provided connection, or create one."
+        self.conn = connection or Connection(**kwargs)
+
+    def _request(self, method, keys={}, **kwargs):
+        """Does the actual API request. It strips off the keys kwargs and uses
+        that to generate the URL to the object. All other kwargs are passed to
+        Connection.request()."""
+        url = self.conn.get_url(self.fragments, **keys)
+        return self.conn.request(method, url, **kwargs)
+
+    def _create(self, **kwargs):
+        return self._request('post', **kwargs)
+
+    def _read(self, **kwargs):
+        return self._request('get', **kwargs)
+
+    def _update(self, **kwargs):
+        return self._request('post', **kwargs)
+
+    def _delete(self, **kwargs):
+        return self._request('delete', **kwargs)
+
+    def create(self, *args, **kwargs):
+        "This method is not supported by the endpoint."
+        raise NotImplementedError('Endpoint does not support this method.')
+
+    def read(self, *args, **kwargs):
+        "This method is not supported by the endpoint."
+        raise NotImplementedError('Endpoint does not support this method.')
+
+    def update(self, *args, **kwargs):
+        "This method is not supported by the endpoint."
+        raise NotImplementedError('Endpoint does not support this method.')
+
+    def delete(self, *args, **kwargs):
+        "This method is not supported by the endpoint."
+        raise NotImplementedError('Endpoint does not support this method.')
+
+
+class PathTree(Endpoint):
+    "Returns path information using a file system like structure."
+    fragments = ('path', 'tree', '{path}')
+
+    def read(self, path='/', children=False, **kwargs):
+        # The 'keys' argument is used by Connection.get_url() for generating
+        # the URL for the object we are interested in.
+        kwargs['keys'] = {
+            # Strip leading slashes.
+            'path': path,
+        }
         if children:
-            kwargs['params'] = {'children': True}
-        return super(PathTreeAPI, self)._read(path, *args, **kwargs)
+            # The 'params' argument will be used by requests to generate the
+            # querystring.
+            kwargs['params'] = { 'children': children }
+        return self._read(**kwargs).json
 
 
-class PathDataAPI(_BaseAPI):
-    """ Path Data API. """
-    _api_uri = ('path/', None, 'data/')
-
-    @property
-    def create(self):
-        return self._create
-
-    @property
-    def read(self):
-        return self._read
-
-
-class PathAPI(_BaseAPI):
-    """ Path API. """
-    _api_uri = ('path/', None, '/')
+class PathData(Endpoint):
+    "Allows access to a path's data."
+    fragments = ('path', '{id}', 'data')
 
     def __init__(self, *args, **kwargs):
-        super(PathAPI, self).__init__(*args, **kwargs)
-        kwargs['session'] = self._session
-        self._path_data_api = PathDataAPI(*args, **kwargs)
-        self._path_oper_api = PathOperAPI(*args, **kwargs)
-        self._path_tree_api = PathTreeAPI(*args, **kwargs)
+        super(PathData, self).__init__(*args, **kwargs)
+        # As a convenience, we allow reading/writing data by path, since the
+        # API requires a path id for reading, we will internally use a PathTree
+        # endpoint to look them up.
+        self.tree = PathTree(*args, **kwargs)
 
-    @property
+    def _get_kwargs(self, path):
+        info = self.tree.read(path=path)
+        return {
+            'keys': {
+                'id': info['id'],
+            }
+        }
+
+    def download(self, path, dst, chunk_size=16 * 1024):
+        "Downloads to a file-like object or path."
+        kwargs = self._get_kwargs(path)
+        r = self._read(**kwargs)
+        if not callable(getattr(dst, 'write', None)):
+            openfile, dst = True, file(dst, 'wb')
+        else:
+            openfile = False
+        try:
+            for chunk in r.iter_content(chunk_size):
+                dst.write(chunk)
+        finally:
+            # If we opened it, we close it.
+            if openfile:
+                dst.close()
+
+    def upload(self, path, src):
+        "Uploads from a file-like object or path."
+        if not callable(getattr(src, 'read', None)):
+            openfile, src = True, file(src, 'rb')
+        else:
+            openfile = False
+        parent = dirname(path)
+        kwargs = self._get_kwargs(parent)
+        kwargs['files'] = {
+            basename(path): src,
+        }
+        try:
+            self._create(**kwargs)
+        finally:
+            if openfile:
+                src.close()
+
+
+class PathOper(Endpoint):
+    """API endpoint for dealing with path operations. Some path operations
+    create a task, which is a long-running job that can be polled to monitor
+    it's status."""
+    fragments = ('path', 'oper', '{operation}')
+
+    def _create(self, operation, **kwargs):
+        kwargs.update({
+            'keys': {
+                'operation': operation,
+            },
+        })
+        return self._request('post', **kwargs)
+
+    def _create_task(self, operation, **kwargs):
+        # Tell requests to follow redirects after POST, the operation API will
+        # redirect if the operation is long-running (and creates a task).
+        kwargs['allow_redirects'] = True
+        return Task(self._create('remove', **kwargs).json, connection=self.conn)
+
+    def remove(self, path, **kwargs):
+        kwargs['data'] = {
+            'path': path,
+        }
+        return self._create_task('remove', **kwargs)
+
+    def copy(self, src, dst, **kwargs):
+        kwargs['data'] = {
+            'src': src,
+            'dst': dst,
+        }
+        return self._create_task('copy', **kwargs)
+
+    def move(self, src, dst, **kwargs):
+        kwargs['data'] = {
+            'src': src,
+            'dst': dst,
+        }
+        return self._create_task('move', **kwargs)
+
+    def mkdir(self, path, **kwargs):
+        kwargs['data'] = {
+            'path': path,
+        }
+        return self._create('create', **kwargs).json
+
+    def rename(self, path, **kwargs):
+        kwargs['data'] = {
+            'src': src,
+            'dst': dst,
+        }
+        self._create('create', **kwargs)
+
+
+class Task(Endpoint):
+    """An endpoint for dealing with long-running tasks. This endpoint provides
+    a convenience function wait() that will wait for completion. It is not like
+    other endpoints in that users don't create tasks directly, but they are
+    created in response to operations performed at other endpoints."""
+    fragments = ('task', '{uuid}')
+
+    def __init__(self, task, **kwargs):
+        super(Task, self).__init__(**kwargs)
+        self.task = task
+
+    def _get_kwargs(self):
+        return {
+            'keys': {
+                'uuid': self.task['uuid'],
+            },
+        }
+
     def read(self):
-        """ Shortcut to Path Tree API read(). """
-        return self._path_tree_api.read
+        kwargs = self._get_kwargs()
+        return self._read(**kwargs).json
 
-    def remove(self, path):
-        """ Remove the file and poll awhile for it to finish. """
-        response = self._path_oper_api.remove(path)
-        if response.status_code == 200:
-            response = self._path_oper_api.poll(response.json['url'])
-        return response
+    def delete(self):
+        kwargs = self._get_kwargs()
+        self._delete(**kwargs)
 
-    def download(self, dst, src):
-        # Get file ID and download and save file in chunks.
-        tree = self.read(src)
-        response = self._path_data_api.read(tree.json['id'])
-        if response.status_code == 200:
-            with open(dst, 'wb') as dst_file:
-                for chunk in response.iter_content(16 * 1024):
-                    dst_file.write(chunk)
-
-        return response
-
-    def upload(self, dst, src):
-        # Get directory ID.
-        dst_dir = dirname(dst)
-        tree = self._path_tree_api.read(dst_dir)
-
-        # Upload file.
-        files = {'file': (basename(dst), open(src, 'rb'))}
-        return self._path_data_api.create(None, tree.json['id'], files=files)
-
-        return super(PathAPI, self)._create(
-            None, self._api_uri_ext, baseurl=tree.json['url'], files=files)
+    def wait(self, timeout=None):
+        "Wait for the task's completion. By default waits forever."
+        kwargs = self._get_kwargs()
+        start = time.time()
+        while True:
+            info = self._read(**kwargs).json
+            if (timeout is not None and
+                time.time() - start >= timeout):
+                break
+            if info['result']['status'] in ('SUCCESS', 'FAILURE'):
+                break
+            time.sleep(1)
+        return info
 
 
-class PingAPI(_BaseAPI):
-    """ Ping API. """
-    _api_uri = ('ping/',)
+class Container(object):
+    """Caches and makes available endpoints from a convenient location. All
+    endpoints will share the same Connection."""
+    endpoints = {}
 
-    @property
+    def __init__(self, connection=None, **kwargs):
+        self.conn = connection or Connection(**kwargs)
+        self.cache = {}
+
+    def __getattr__(self, attr):
+        try:
+            cls = self.endpoints[attr]
+        except KeyError:
+            raise APIError('Invalid API endpoint %s' % attr)
+        if cls not in self.cache:
+            self.cache[cls] = cls(connection=self.conn)
+        return self.cache[cls]
+
+
+class PathAPI(Container):
+    "A container for path related Endpoints."
+    endpoints = {
+        'tree': PathTree,
+        'data': PathData,
+        'operations': PathOper,
+    }
+
+
+class UserAccess(Endpoint):
+    fragments = ('access', 'user', )
+
+
+class PathAccess(Endpoint):
+    fragments = ('access', 'path', )
+
+
+class AccessAPI(Container):
+    endpoints = {
+        'user': UserAccess,
+        'path': PathAccess,
+        'group': GroupAccess,
+    }
+
+
+class UserQuota(Endpoint):
+    fragments = ('quota', 'user', )
+
+
+class SiteQuota(Endpoint):
+    fragments = ('quota', 'site', )
+
+
+class QuotaAPI(Container):
+    endpoints = {
+        'user': UserQuota,
+        'site': SiteQuota,
+    }
+
+
+class Ping(Endpoint):
+    """Returns a simple value. Useful to test connectivity. This endpoint is
+    anonymous."""
+    fragments = ('ping', )
+
     def read(self):
-        return self._read
+        return self._read().json
 
 
-class API(_APIContainer):
-    """
-    This class provides a single interface to the various segments of the
-    SmartFile API.
-    """
-    @property
-    def access(self):
-        return self._get_api('_api_access_obj', AccessAPI)
+class WhoAmI(Endpoint):
+    """Echos information about the current user/site. Useful to test
+    authentication."""
+    fragments = ('whoami', )
 
-    @property
-    def group(self):
-        return self._get_api('_api_group_obj', GroupAPI)
+    def read(self):
+        return self._read().json
 
-    @property
-    def link(self):
-        return self._get_api('_api_link_obj', LinkAPI)
 
-    @property
-    def path(self):
-        return self._get_api('_api_path_obj', PathAPI)
+class Link(Endpoint):
+    fragments = ('link', )
 
-    @property
-    def path_oper(self):
-        return self._get_api('_api_path_oper_obj', PathOperAPI)
 
-    @property
-    def path_tree(self):
-        return self._get_api('_api_path_tree_obj', PathTreeAPI)
+class Role(Endpoint):
+    fragments = ('role', )
 
-    @property
-    def ping(self):
-        return self._get_api('_api_ping_obj', PingAPI)
 
-    @property
-    def quota(self):
-        return self._get_api('_api_quota_obj', QuotaAPI)
-
-    @property
-    def role(self):
-        return self._get_api('_api_role_obj', RoleAPI)
-
-    @property
-    def site(self):
-        return self._get_api('_api_site_obj', SiteAPI)
-
-    @property
-    def user(self):
-        return self._get_api('_api_user_obj', UserAPI)
+class API(Container):
+    """The main API tree. It branches out to Endpoints and Containers. It acts
+    as a namespace for the API."""
+    endpoints = {
+        # Sub-Collections of Endpoints:
+        'path': PathAPI,
+        'access': AccessAPI,
+        'quota': QuotaAPI,
+    
+        # Endpoints:
+        'ping': Ping,
+        'whoami': WhoAmI,
+        'link': Link,
+        'user': User,
+        'site': Site,
+        'role': Role,
+    }
