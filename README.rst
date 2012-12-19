@@ -86,7 +86,9 @@ you can provide credentials via the environment.
 
     $ export SMARTFILE_API_KEY="**********"
     $ export SMARTFILE_API_PASSWORD="**********"
-    $ python
+
+.. code:: python
+
     >>> from smartfile import API
     >>> api = API()
     >>> api.path.operations.move('/source/path', '/destination/path')
