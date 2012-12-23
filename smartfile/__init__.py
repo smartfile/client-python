@@ -17,6 +17,7 @@ SMARTFILE_API_URL = 'https://app.smartfile.com/api/'
 SMARTFILE_API_VER = '2.0'
 
 THROTTLE = re.compile('^next=([^ ]+) sec$')
+HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
 
 
 class Connection(object):
@@ -27,7 +28,8 @@ class Connection(object):
         self.base_url = url or os.environ.get('SMARTFILE_API_URL', SMARTFILE_API_URL)
         self.base_ver = version or os.environ.get('SMARTFILE_API_VER', SMARTFILE_API_VER)
         self.throttle_wait = throttle_wait
-        self._session = requests.session(auth=self.get_auth(key, password))
+        self._session = requests.session()
+        self._session.auth = self.get_auth(key, password)
 
     def get_auth(self, key=None, password=None):
         "Tries to determine the authentication parameters (key and password)."
@@ -63,6 +65,7 @@ class Connection(object):
     def _request(self, request, url, **kwargs):
         """Performs a single HTTP request, raises an exception for >=400
         status. All kwargs are passed to the requests library."""
+        kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
         try:
             response = request(url, **kwargs)
         except RequestException, e:
@@ -251,10 +254,16 @@ class PathOper(Endpoint):
         return self._create_task('move', **kwargs)
 
     def mkdir(self, path, **kwargs):
-        kwargs['data'] = {
-            'path': path,
-        }
-        return self._create('create', **kwargs).json
+        # TODO: this is really ugly, this endpoint uses PUT, and requires
+        # the path to create in the URL. This is the only one like this AFAIK.
+        kwargs.update({
+            'keys': {
+                # TODO: fix this, we are bastardizing the URL creation. Either
+                # it is too inflexible, or this endpoint should conform.
+                'operation': 'create' + path,
+            },
+        })
+        return self._request('put', **kwargs)
 
     def rename(self, path, **kwargs):
         kwargs['data'] = {
