@@ -22,10 +22,11 @@ class ResponseError(APIError):
     def __init__(self, response, *args, **kwargs):
         self.response = response
         self.status_code = response.status_code
-        if not response.json or not 'detail' in response.json:
+        json = response.json()
+        if not json or not 'detail' in json:
             self.detail = u'Server error; check response for errors'
         else:
-            self.detail = response.json['detail']
+            self.detail = json['detail']
         super(ResponseError, self).__init__(*args, **kwargs)
 
     def __str__(self):
