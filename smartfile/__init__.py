@@ -157,7 +157,7 @@ class PathTree(Endpoint):
             # The 'params' argument will be used by requests to generate the
             # querystring.
             kwargs['params'] = { 'children': children }
-        return self._read(**kwargs).json
+        return self._read(**kwargs).json()
 
 
 class PathData(Endpoint):
@@ -231,7 +231,7 @@ class PathOper(Endpoint):
         # Tell requests to follow redirects after POST, the operation API will
         # redirect if the operation is long-running (and creates a task).
         kwargs['allow_redirects'] = True
-        return Task(self._create('remove', **kwargs).json, connection=self.conn)
+        return Task(self._create('remove', **kwargs).json(), connection=self.conn)
 
     def remove(self, path, **kwargs):
         kwargs['data'] = {
@@ -293,7 +293,7 @@ class Task(Endpoint):
 
     def read(self):
         kwargs = self._get_kwargs()
-        return self._read(**kwargs).json
+        return self._read(**kwargs).json()
 
     def delete(self):
         kwargs = self._get_kwargs()
@@ -304,7 +304,7 @@ class Task(Endpoint):
         kwargs = self._get_kwargs()
         start = time.time()
         while True:
-            info = self._read(**kwargs).json
+            info = self._read(**kwargs).json()
             if (timeout is not None and
                 time.time() - start >= timeout):
                 break
@@ -383,7 +383,7 @@ class Ping(Endpoint):
     fragments = ('ping', )
 
     def read(self):
-        return self._read().json
+        return self._read().json()
 
 
 class WhoAmI(Endpoint):
@@ -392,7 +392,7 @@ class WhoAmI(Endpoint):
     fragments = ('whoami', )
 
     def read(self):
-        return self._read().json
+        return self._read().json()
 
 
 class Link(Endpoint):
