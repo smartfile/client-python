@@ -36,7 +36,21 @@ of the API object, then access any API functions using that taxonomy.
      u'size': 4612524,
      u'tags': [],
      u'time': u'2012-12-19T15:24:37',
-     u'url': u'http://localhost:8000/api/2/path/7/'}
+     u'url': u'https://app.smartfile.com/api/2/path/7/'}
+
+Instead of providing credentials in code, for shell scripts or other frameworks
+you can provide credentials via the environment.
+
+::
+
+    $ export SMARTFILE_API_KEY="**********"
+    $ export SMARTFILE_API_PASSWORD="**********"
+
+.. code:: python
+
+    >>> from smartfile import API
+    >>> api = API()
+    >>> api.path.operations.move('/source/path', '/destination/path')
 
 You can also deal directly with specific endpoints, this is useful if you are
 only going to deal with say, paths, and don't want to type the full namespace
@@ -61,7 +75,7 @@ for each API call.
      u'size': 4612524,
      u'tags': [],
      u'time': u'2012-12-19T15:24:37',
-     u'url': u'http://localhost:8000/api/2/path/7/'}
+     u'url': u'https://app.smartfile.com/api/2/path/7/'}
 
 Uploading and downloading files is supported, and deals with file paths or
 file-like objects. Care is taken to stream data to and from the server, so
@@ -75,39 +89,25 @@ objects allows for streaming to/from any source.
     >>> api = PathData(key='**********', password='**********')
     >>> api.upload('/path/within/smartfile.jpg', '/local/path.jpg')
     >>> sio = StringIO()
-    >>> api.download('/another/path.txt', sio)
+    >>> api.download('/path/within/smartfile.jpg', sio)
     >>> sio.seek(0)
     >>> api.upload('/you/should/use/copy/instead.txt', sio)
 
-Instead of providing credentials in code, for shell scripts or other frameworks
-you can provide credentials via the environment.
-
-::
-
-    $ export SMARTFILE_API_KEY="**********"
-    $ export SMARTFILE_API_PASSWORD="**********"
-
-.. code:: python
-
-    >>> from smartfile import API
-    >>> api = API()
-    >>> api.path.operations.move('/source/path', '/destination/path')
-
-The above example used an operation. Operations are long-running jobs that are
-not executed within the time frame of an API call. For such operations, a task
-is created, and the API can be used to poll the status of the task. Tasks
-provide a convenience function wait() that will block until the tasks
-completes. An optional timeout allows wait() to return before completion.
+Operations are long-running jobs that are not executed within the time frame
+of an API call. For such operations, a task is created, and the API can be used
+to poll the status of the task. Tasks provide a convenience function wait()
+that will block until the tasks completes. An optional timeout allows wait() to
+return before completion.
 
 .. code:: python
 
     >>> from smartfile import API
     >>> api = API(key='**********', password='**********')
-    >>> t = api.path.operations.remove('/')  # <- rm -rf /
-    >>> status = t.wait(timeout=5)
+    >>> task = api.path.operations.remove('/')  # <- rm -rf /
+    >>> status = task.wait(timeout=5)
     >>> while status['result']['status'] not in ('FAILURE', 'SUCCESS'):
     >>>     # ...Do some other stuff...
-    >>>     status = t.wait(timeout=5)
+    >>>     status = task.wait(timeout=5)
 
 Operations that use tasks are.
 
@@ -117,7 +117,7 @@ Operations that use tasks are.
 
 Some operations complete immediately.
 
-* api.path.operations.create()
+* api.path.operations.mkdir()
 * api.path.operations.rename()
 
 You never create tasks directly, they are always created automatically in
