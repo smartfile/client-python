@@ -20,8 +20,8 @@ setup(
     requires = [
         'requests',
     ],
-    author = 'Ben Timby',
-    author_email = 'btimby@gmail.com',
+    author = 'SmartFile',
+    author_email = 'info@smartfile.com',
     maintainer = 'Ben Timby',
     maintainer_email = 'btimby@gmail.com',
     url = 'http://github.com/smartfile/client-python/',
