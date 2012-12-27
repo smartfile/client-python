@@ -18,7 +18,9 @@ setup(
     description = 'A Python client for the SmartFile API.',
     long_description = long_description,
     requires = [
+        'oauthlib',
         'requests',
+        'requests_oauthlib',
     ],
     author = 'SmartFile',
     author_email = 'info@smartfile.com',

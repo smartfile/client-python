@@ -2,8 +2,11 @@ import re
 import os
 import requests
 import time
+import urllib
+import urlparse
 
 from requests.exceptions import RequestException
+from requests_oauthlib import OAuth1
 
 from os.path import basename
 from os.path import dirname
@@ -13,8 +16,9 @@ from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
 
 
-SMARTFILE_API_URL = 'https://app.smartfile.com/api/'
-SMARTFILE_API_VER = '2.0'
+API_URL = 'https://app.smartfile.com/api/'
+API_VER = '2.0'
+OAUTH_URL = 'http://localhost:8000/oauth/'
 
 THROTTLE = re.compile('^next=([^ ]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
@@ -22,17 +26,17 @@ HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
 
 class Connection(object):
     "Manages the HTTP portion of the API."
-    def __init__(self, url=None, version=None, key=None, password=None,
-                 throttle_wait=True):
+    def __init__(self, url=None, version=None, throttle_wait=True, **kwargs):
         "Collects everything needed to access the API, url, key, password."
-        self.base_url = url or os.environ.get('SMARTFILE_API_URL', SMARTFILE_API_URL)
-        self.base_ver = version or os.environ.get('SMARTFILE_API_VER', SMARTFILE_API_VER)
+        self.base_url = url or os.environ.get('SMARTFILE_API_URL', API_URL)
+        self.base_ver = version or os.environ.get('SMARTFILE_API_VER', API_VER)
         self.throttle_wait = throttle_wait
         self._session = requests.session()
-        self._session.auth = self.get_auth(key, password)
+        self._session.auth = self.get_auth(**kwargs)
 
-    def get_auth(self, key=None, password=None):
-        "Tries to determine the authentication parameters (key and password)."
+    def get_password_auth(self, **kwargs):
+        key = kwargs.get('key')
+        password = kwargs.get('password')
         if key is None:
             key = os.environ.get('SMARTFILE_API_KEY')
         if password is None:
@@ -41,6 +45,45 @@ class Connection(object):
             raise APIError('Please provide an API key and password. Use '
                            'arguments or environment variables.')
         return key, password
+
+    def get_oauth_auth(self, **kwargs):
+        # Get the client token.
+        client_token = kwargs.get('client_token')
+        client_secret = kwargs.get('client_secret')
+        if client_token is None:
+            client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
+        if client_secret is None:
+            client_secret = os.environ.get('SMARTFILE_CLIENT_SECRET')
+        if not client_token or not client_secret:
+            raise APIError('You must provide a client_token and client_secret '
+                            'for OAuth.')
+        # Get the access token:
+        access_token = kwargs.get('access_token')
+        access_secret = kwargs.get('access_secret')
+        if access_token is None:
+            access_token = os.environ.get('SMARTFILE_ACCESS_TOKEN')
+        if access_secret is None:
+            access_secret = os.environ.get('SMARTFILE_ACCESS_SECRET')
+        if not access_token or not access_secret:
+            raise APIError('You must provide an access_token and access_secret '
+                           'for OAuth.')
+        return OAuth1(unicode(client_token),
+                      client_secret=unicode(client_secret),
+                      resource_owner_key=unicode(access_token),
+                      resource_owner_secret=unicode(access_secret))
+
+    def get_auth(self, **kwargs):
+        "Sets up authentication."
+        try:
+            return self.get_oauth_auth(**kwargs)
+        except APIError:
+            pass
+        try:
+            return self.get_password_auth(**kwargs)
+        except APIError:
+            pass
+        raise APIError('You must provide authentication information. '
+                       'Either API key and password or oauth keys.')
 
     def get_url(self, components, *args, **kwargs):
         "Concatenate the base_url, URL components and then merge in arguments."
@@ -140,6 +183,36 @@ class Endpoint(object):
     def delete(self, *args, **kwargs):
         "This method is not supported by the endpoint."
         raise NotImplementedError('Endpoint does not support this method.')
+
+
+class OAuth(object):
+    def __init__(self, client_token=None, client_secret=None):
+        if client_token is None:
+            client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
+        if client_secret is None:
+            client_secret = os.environ.get('SMARTFILE_CLIENT_SECRET')
+        self.client_token = unicode(client_token)
+        self.client_secret = unicode(client_secret)
+
+    def get_request_token(self, callback_uri=None):
+        oauth = OAuth1(self.client_token, client_secret=self.client_secret,
+                       callback_uri=callback_uri)
+        r = requests.post(urlparse.urljoin(OAUTH_URL, 'request_token/'), auth=oauth)
+        credentials = urlparse.parse_qs(r.text)
+        return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
+
+    def get_authorization_url(self, request_token):
+        url = urlparse.urljoin(OAUTH_URL, 'authorize/')
+        return url + '?' + urllib.urlencode(dict(oauth_token=request_token))
+
+    def get_access_token(self, request_token, request_secret, verifier):
+        oauth = OAuth1(self.client_token, client_secret=self.client_secret,
+                       resource_owner_key=request_token,
+                       resource_owner_secret=request_secret,
+                       verifier=unicode(verifier))
+        r = requests.post(urlparse.urljoin(OAUTH_URL, 'access_token/'), auth=oauth)
+        credentials = urlparse.parse_qs(r.text)
+        return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
 
 
 class PathTree(Endpoint):
