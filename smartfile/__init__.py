@@ -4,6 +4,8 @@ import requests
 import time
 import urllib
 import urlparse
+import optparse
+import pprint
 
 from requests.exceptions import RequestException
 from requests_oauthlib import OAuth1
@@ -194,9 +196,9 @@ class OAuth(object):
         self.client_token = unicode(client_token)
         self.client_secret = unicode(client_secret)
 
-    def get_request_token(self, callback_uri=None):
+    def get_request_token(self, callback=None):
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
-                       callback_uri=callback_uri)
+                       callback_uri=unicode(callback))
         r = requests.post(urlparse.urljoin(OAUTH_URL, 'request_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
         return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
@@ -207,8 +209,8 @@ class OAuth(object):
 
     def get_access_token(self, request_token, request_secret, verifier):
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
-                       resource_owner_key=request_token,
-                       resource_owner_secret=request_secret,
+                       resource_owner_key=unicode(request_token),
+                       resource_owner_secret=unicode(request_secret),
                        verifier=unicode(verifier))
         r = requests.post(urlparse.urljoin(OAUTH_URL, 'access_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
@@ -492,7 +494,7 @@ class API(Container):
         'path': PathAPI,
         'access': AccessAPI,
         'quota': QuotaAPI,
-    
+
         # Endpoints:
         'ping': Ping,
         'whoami': WhoAmI,
@@ -501,3 +503,46 @@ class API(Container):
         'site': Site,
         'role': Role,
     }
+
+
+def main():
+    parser = optparse.OptionParser(prog="smartfile", description="CLI harness for SmartFile.")
+    parser.add_option("-t", "--client-token", help="Your SmartFile client token.")
+    parser.add_option("-s", "--client-secret", help="Your SmartFile client secret.")
+    parser.add_option("-a", "--access-token", help="Your SmartFile access token (if you previously obtained one.")
+    parser.add_option("-b", "--access-secret", help="Your SmartFile access secret (if you previously obtained one.")
+
+    (options, args) = parser.parse_args()
+
+    if not options.client_token or not options.client_secret:
+        parser.error('You need to provide a client token and secret. If you '
+                     'don\'t have one, register for one.\n'
+                     'http://app.smartfile.com/oauth/register/')
+    if not options.access_token or not options.access_secret:
+        print 'You need an access token, let\s get one...'
+        oa = OAuth(client_token=options.client_token, client_secret=options.client_secret)
+        token = oa.get_request_token()
+        url = oa.get_authorization_url(request_token=token[0])
+        print 'Authorize the application at the following URL. Type in the verifier and hit <enter>.'
+        print url
+        try:
+            import webbrowser
+            print 'Opening URL in your default browser...'
+            webbrowser.open(url)
+        except:
+            pass
+        verifier = raw_input()
+        print 'Now, we will try to obtain an access token.'
+        access_token, access_secret = oa.get_access_token(request_token=token[0],
+            request_secret=token[1], verifier=verfier)
+        print 'Access Token:', access_token
+        print 'Access Secret:', access_secret
+    else:
+        access_token, access_secret = options.access_token, options.access_secret
+    api = API(client_token=options.client_token, client_secret=options.client_secret,
+              access_token=access_token, access_secret=access_secret)
+    pprint.pprint(api.whoami.read())
+
+
+if __name__ == '__main__':
+    main()
