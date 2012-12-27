@@ -18,9 +18,8 @@ from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
 
 
-API_URL = 'https://app.smartfile.com/api/'
+API_URL = 'https://app.smartfile.com/'
 API_VER = '2.0'
-OAUTH_URL = 'http://localhost:8000/oauth/'
 
 THROTTLE = re.compile('^next=([^ ]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
@@ -95,6 +94,7 @@ class Connection(object):
         # Inject the base URL and API version as the first items. Strip any
         # trailing '/'.
         components = [
+            'api',
             self.base_ver,
         ] + components
         # Join all the components into one uniform URL (containing format
@@ -188,7 +188,8 @@ class Endpoint(object):
 
 
 class OAuth(object):
-    def __init__(self, client_token=None, client_secret=None):
+    def __init__(self, url=API_URL, client_token=None, client_secret=None):
+        self.url = url
         if client_token is None:
             client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
         if client_secret is None:
@@ -199,12 +200,12 @@ class OAuth(object):
     def get_request_token(self, callback=None):
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
                        callback_uri=unicode(callback))
-        r = requests.post(urlparse.urljoin(OAUTH_URL, 'request_token/'), auth=oauth)
+        r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
         return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
 
     def get_authorization_url(self, request_token):
-        url = urlparse.urljoin(OAUTH_URL, 'authorize/')
+        url = urlparse.urljoin(self.url, 'oauth/authorize/')
         return url + '?' + urllib.urlencode(dict(oauth_token=request_token))
 
     def get_access_token(self, request_token, request_secret, verifier):
@@ -212,7 +213,7 @@ class OAuth(object):
                        resource_owner_key=unicode(request_token),
                        resource_owner_secret=unicode(request_secret),
                        verifier=unicode(verifier))
-        r = requests.post(urlparse.urljoin(OAUTH_URL, 'access_token/'), auth=oauth)
+        r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
         return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
 
