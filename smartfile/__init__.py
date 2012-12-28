@@ -23,7 +23,7 @@ from smartfile.errors import ResponseError
 API_URL = 'https://app.smartfile.com/'
 API_VER = '2.0'
 
-THROTTLE = re.compile('^next=([^ ]+) sec$')
+THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
 
 
@@ -141,8 +141,7 @@ class Connection(object):
                 if self.throttle_wait and e.status_code == 503:
                     m = THROTTLE.match(e.response.headers['x-throttle'])
                     if m:
-                        wait = float(m.group(1))
-                        time.sleep(wait)
+                        time.sleep(float(m.group(1)))
                         continue
                 raise
 
