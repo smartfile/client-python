@@ -25,6 +25,8 @@ class ResponseError(APIError):
         json = response.json()
         if not json or not 'detail' in json:
             self.detail = u'Server error; check response for errors'
+        elif self.status_code == 400:
+            self.detail = json['field_errors']
         else:
             self.detail = json['detail']
         super(ResponseError, self).__init__(*args, **kwargs)

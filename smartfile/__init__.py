@@ -7,6 +7,8 @@ import urlparse
 import optparse
 import pprint
 
+from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
+
 from requests.exceptions import RequestException
 from requests_oauthlib import OAuth1
 
@@ -71,7 +73,8 @@ class Connection(object):
         return OAuth1(unicode(client_token),
                       client_secret=unicode(client_secret),
                       resource_owner_key=unicode(access_token),
-                      resource_owner_secret=unicode(access_secret))
+                      resource_owner_secret=unicode(access_secret),
+                      signature_method=SIGNATURE_PLAINTEXT)
 
     def get_auth(self, **kwargs):
         "Sets up authentication."
@@ -199,7 +202,8 @@ class OAuth(object):
 
     def get_request_token(self, callback=None):
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
-                       callback_uri=unicode(callback))
+                       callback_uri=unicode(callback),
+                       signature_method=SIGNATURE_PLAINTEXT)
         r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
         return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
@@ -212,7 +216,8 @@ class OAuth(object):
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
                        resource_owner_key=unicode(request_token),
                        resource_owner_secret=unicode(request_secret),
-                       verifier=unicode(verifier))
+                       verifier=unicode(verifier),
+                       signature_method=SIGNATURE_PLAINTEXT)
         r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
         return credentials.get('oauth_token')[0], credentials.get('oauth_token_secret')[0]
