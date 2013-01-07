@@ -190,7 +190,7 @@ class Endpoint(object):
 
 
 class OAuth(object):
-    def __init__(self, url=API_URL, client_token=None, client_secret=None):
+    def __init__(self, client_token=None, client_secret=None, url=API_URL):
         self.url = url
         if client_token is None:
             client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
@@ -200,8 +200,10 @@ class OAuth(object):
         self.client_secret = unicode(client_secret)
 
     def get_request_token(self, callback=None):
+        if callback:
+            callback = unicode(callback)
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
-                       callback_uri=unicode(callback),
+                       callback_uri=callback,
                        signature_method=SIGNATURE_PLAINTEXT)
         r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
         credentials = urlparse.parse_qs(r.text)
@@ -211,7 +213,9 @@ class OAuth(object):
         url = urlparse.urljoin(self.url, 'oauth/authorize/')
         return url + '?' + urllib.urlencode(dict(oauth_token=request_token))
 
-    def get_access_token(self, request_token, request_secret, verifier):
+    def get_access_token(self, request_token, request_secret, verifier=None):
+        if verifier:
+            verifier = unicode(verifier)
         oauth = OAuth1(self.client_token, client_secret=self.client_secret,
                        resource_owner_key=unicode(request_token),
                        resource_owner_secret=unicode(request_secret),
