@@ -59,7 +59,7 @@ class Connection(object):
             client_secret = os.environ.get('SMARTFILE_CLIENT_SECRET')
         if not client_token or not client_secret:
             raise APIError('You must provide a client_token and client_secret '
-                            'for OAuth.')
+                           'for OAuth.')
         # Get the access token:
         access_token = kwargs.get('access_token')
         access_secret = kwargs.get('access_secret')
@@ -125,7 +125,7 @@ class Connection(object):
 
     def request(self, method, url, **kwargs):
         """Performs the HTTP request and handles the response. It may retry the
-        request under certain circumstances. All kwargs are passed to 
+        request under certain circumstances. All kwargs are passed to
         Connection._request()."""
         request = getattr(self._session, method, None)
         if not callable(request):
@@ -240,7 +240,7 @@ class PathTree(Endpoint):
         if children:
             # The 'params' argument will be used by requests to generate the
             # querystring.
-            kwargs['params'] = { 'children': children }
+            kwargs['params'] = {'children': children}
         return self._read(**kwargs).json()
 
 
@@ -542,8 +542,8 @@ def main():
             pass
         verifier = raw_input()
         print 'Now, we will try to obtain an access token.'
-        access_token, access_secret = oa.get_access_token(request_token=token[0],
-            request_secret=token[1], verifier=verfier)
+        access_token, access_secret = oa.get_access_token(
+            request_token=token[0], request_secret=token[1], verifier=verifier)
         print 'Access Token:', access_token
         print 'Access Secret:', access_secret
     else:
