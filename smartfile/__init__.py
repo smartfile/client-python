@@ -87,7 +87,7 @@ class Connection(object):
         except APIError:
             pass
         raise APIError('You must provide authentication information. '
-                       'Either API key and password or oauth keys.')
+                       'Either API key and password or OAuth keys.')
 
     def get_url(self, components, *args, **kwargs):
         "Concatenate the base_url, URL components and then merge in arguments."
