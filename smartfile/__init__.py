@@ -136,7 +136,7 @@ try:
     #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
 
     class OAuthToken(object):
-        "Internal representation of an OAuth token/key tuple."
+        "Internal representation of an OAuth (token, secret) tuple."
         def __init__(self, token, secret):
             self.token = unicode(token)
             self.secret = unicode(secret)
