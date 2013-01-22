@@ -7,7 +7,6 @@ import urlparse
 import optparse
 import pprint
 
-
 from requests.exceptions import RequestException
 
 from os.path import basename
@@ -23,21 +22,6 @@ API_VER = '2.0'
 
 THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
-
-
-class OAuthToken(object):
-    "Internal representation of an OAuth token/key tuple."
-    def __init__(self, token, secret):
-        self.token = unicode(token)
-        self.secret = unicode(secret)
-
-    def __iter__(self):
-        yield self.token
-        yield self.secret
-        raise StopIteration()
-
-    def __getitem__(self, index):
-        return (self.token, self.secret)[index]
 
 
 class Endpoint(object):
@@ -122,9 +106,49 @@ class Client(Endpoint):
                 raise
 
 
+class KeyClient(Client):
+    """API client that uses a key and password. Layers a simple form of
+    authentication on the base Client."""
+    def __init__(self, key=None, password=None, **kwargs):
+        if key is None:
+            key = os.environ.get('SMARTFILE_API_KEY')
+        if password is None:
+            password = os.environ.get('SMARTFILE_API_PASSWORD')
+        if key is None or password is None:
+            raise APIError('Please provide an API key and password. Use '
+                           'arguments or environment variables.')
+        self.key = key
+        self.password = password
+        super(KeyClient, self).__init__(self, **kwargs)
+
+    def _request(self, *args, **kwargs):
+        # Add the token authentication
+        kwargs['auth'] = (self.key, self.password)
+        return super(KeyClient, self)._request(*args, **kwargs)
+
+
 try:
     from requests_oauthlib import OAuth1
     from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
+
+    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
+    #                OAuth, if available.
+    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
+
+    class OAuthToken(object):
+        "Internal representation of an OAuth token/key tuple."
+        def __init__(self, token, secret):
+            self.token = unicode(token)
+            self.secret = unicode(secret)
+
+        def __iter__(self):
+            yield self.token
+            yield self.secret
+            raise StopIteration()
+
+        def __getitem__(self, index):
+            return (self.token, self.secret)[index]
+
 
     class OAuthClient(Client):
         """API client that uses OAuth tokens. Layers a more complex form of
@@ -192,75 +216,16 @@ try:
             credentials = urlparse.parse_qs(r.text)
             self.access = OAuthToken(credentials.get('oauth_token')[0],
                                      credentials.get('oauth_token_secret')[0])
+
+
 except ImportError:
-    # TODO: is there a better way to get the point across? warnings?
-    class OAuthClient(object):
-        def __init__(self, *args, **kwargs):
-            raise NotImplementedError('You must install oauthlib to use the OAuthClient.')
+    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
+    #              OAuth, if not available.
+    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
 
-        def __getattr__(self, name):
-            raise NotImplementedError('You must install oauthlib to use the OAuthClient.')
-
-
-class KeyClient(Client):
-    """API client that uses a key and password. Layers a simple form of
-    authentication on the base Client."""
-    def __init__(self, key=None, password=None, **kwargs):
-        if key is None:
-            key = os.environ.get('SMARTFILE_API_KEY')
-        if password is None:
-            password = os.environ.get('SMARTFILE_API_PASSWORD')
-        if key is None or password is None:
-            raise APIError('Please provide an API key and password. Use '
-                           'arguments or environment variables.')
-        self.key = key
-        self.password = password
-        super(KeyClient, self).__init__(self, **kwargs)
-
-    def _request(self, *args, **kwargs):
-        # Add the token authentication
-        kwargs['auth'] = (self.key, self.password)
-        return super(KeyClient, self)._request(*args, **kwargs)
-
-
-def main():
-    parser = optparse.OptionParser(prog="smartfile", description="CLI harness for SmartFile.")
-    parser.add_option("-t", "--client-token", help="Your SmartFile client token.")
-    parser.add_option("-s", "--client-secret", help="Your SmartFile client secret.")
-    parser.add_option("-a", "--access-token", help="Your SmartFile access token (if you previously obtained one.")
-    parser.add_option("-b", "--access-secret", help="Your SmartFile access secret (if you previously obtained one.")
-
-    (options, args) = parser.parse_args()
-
-    if not options.client_token or not options.client_secret:
-        parser.error('You need to provide a client token and secret. If you '
-                     'don\'t have one, register for one.\n'
-                     'http://app.smartfile.com/oauth/register/')
-    if not options.access_token or not options.access_secret:
-        print 'You need an access token, let\s get one...'
-        oa = OAuth(client_token=options.client_token, client_secret=options.client_secret)
-        token = oa.get_request_token()
-        url = oa.get_authorization_url(request_token=token[0])
-        print 'Authorize the application at the following URL. Type in the verifier and hit <enter>.'
-        print url
-        try:
-            import webbrowser
-            print 'Opening URL in your default browser...'
-            webbrowser.open(url)
-        except:
-            pass
-        verifier = raw_input()
-        print 'Now, we will try to obtain an access token.'
-        access_token, access_secret = oa.get_access_token(
-            request_token=token[0], request_secret=token[1], verifier=verifier)
-        print 'Access Token:', access_token
-        print 'Access Secret:', access_secret
-    else:
-        access_token, access_secret = options.access_token, options.access_secret
-    api = API(client_token=options.client_token, client_secret=options.client_secret,
-              access_token=access_token, access_secret=access_secret)
-    pprint.pprint(api.whoami.read())
-
-
-if __name__ == '__main__':
-    main()
+    # Instead of a class, define this as a function, thus when a user tries to
+    # "instantiate" it, they receive an exception.
+    def OAuthClient(*args, **kwargs):
+        raise NotImplementedError('You must install oauthlib and '
+            'requests_oauthlib to use the OAuthClient. Try "pip install '
+            'requests_oauthlib" to install both.')
