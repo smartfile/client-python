@@ -49,39 +49,41 @@ class Endpoint(object):
     def __getattr__(self, name):
         return Endpoint(self, name)
 
-    def _request(self, method, id, **kwargs):
+    def _request(self, method, id=None, **kwargs):
+        """Assembles the path, locates the API client on the endpoint stack,
+        and asks it to make the API call."""
         path, obj = [], self
         while not isinstance(obj, Client):
             path.append(obj.name)
             obj = obj.parent
+        if id:
+            path.append(id)
         # obj is now our API client. path contains all the names (url
         # fragments).
-        obj._request(method, path, id, **kwargs)
+        obj._request(method, path, **kwargs)
 
-    def create(self, id, **kwargs):
-        self._request('post', id, data=kwargs)
+    def create(self, **kwargs):
+        self._request('post', data=kwargs)
 
     def read(self, id, **kwargs):
-        self._request('get', id, data=kwargs)
+        self._request('get', id=id, data=kwargs)
 
     def update(self, id, **kwargs):
-        self._request('post', id, data=kwargs)
+        self._request('post', id=id, data=kwargs)
 
     def delete(self, id, **kwargs):
-        self._request('delete', id, data=kwargs)
+        self._request('delete', id=id, data=kwargs)
 
 
 class Client(Endpoint):
     """Base API client, handles communication, retry, versioning etc."""
-    def __init__(self, url=API_URL, version=API_VER):
+    def __init__(self, url=API_URL, version=API_VER, throttle_wait=True):
         self.url = url
         self.version = version
-
-    def _get_url(self, path, id):
-        return '/'.join(path + (id, ))
+        self.throttle_wait = throttle_wait
 
     def _do_request(self, request, url, **kwargs):
-        # Actually make the request!
+        "Actually makes the HTTP request."
         kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
         try:
             response = request(url, **kwargs)
@@ -92,11 +94,17 @@ class Client(Endpoint):
                 raise ResponseError(response)
         return response
 
-    def _request(self, method, path, id, **kwargs):
+    def _request(self, method, path, **kwargs):
+        "Handles retrying failed requests and error handling."
         request = getattr(requests, method, None)
         if not callable(request):
             raise RequestError('Invalid method %s' % method)
-        url = self._get_url(path, id)
+        # Join fragments into a URL
+        fragments = [self.url, 'api', self.version] + path
+        url = '/'.join(fragments)
+        if not url.endswith('/'):
+            url += '/'
+        # Now try the request, if we get throttled, sleep and try again.
         trys, retrys = 0, 3
         while True:
             if trys == retrys:
@@ -110,6 +118,7 @@ class Client(Endpoint):
                     if m:
                         time.sleep(float(m.group(1)))
                         continue
+                # Failed for a reason other than throttling.
                 raise
 
 
