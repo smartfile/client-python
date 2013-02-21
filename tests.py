@@ -1,552 +1,88 @@
 # -*- coding: utf-8 -*-
 
-import filecmp
 import os
+import filecmp
+import urlparse
 import unittest
+import threading
+
+from BaseHTTPServer import HTTPServer
+from BaseHTTPServer import BaseHTTPRequestHandler
 
 from smartfile import API
 from smartfile.exceptions import SmartFileResponseException
 
 
-class BaseTestMixin(object):
-    _test_user = {
-        'name': 'Test User',
-        'username': 'test_user1',
-        'password': 'testpass',
-        'email': 'testuser@example.com'
-    }
-    _test_user2 = {
-        'name': 'Test User2',
-        'username': 'test_user2',
-        'password': 'testpass2',
-        'email': 'testuser2@example.com'
-    }
-    _test_group = {
-        'name': 'Test Group'
-    }
-    _test_group2 = {
-        'name': 'Test Group2'
-    }
-    _test_role = {
-        'name': 'Test Role',
-        'rights': {
-            'self_manage': True
-        }
-    }
-    _test_role2 = {
-        'name': 'Test Role2',
-        'rights': {
-            'self_manage': False
-        }
-    }
-    _test_local_file = '/etc/motd'
-    _test_remote_file = '/motd'
-    _test_downloaded_file = 'motd.down'
-    _test_link = {
-        'name': 'Test Link',
-        'path': _test_remote_file,
-        'read': True,
-        'write': True,
-        'list': True,
-        'remove': True
-    }
-    _test_link2 = {
-        'name': 'Test Link2',
-        'path': _test_remote_file,
-        'read': True,
-        'write': True,
-        'list': True,
-        'remove': True
-    }
-
-
-@unittest.skipUnless('SMARTFILE_RUN_TESTS' in os.environ,
-                     'Unit tests for development server')
-class BaseAPITestCase(BaseTestMixin, unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = API()
-
-
-class UserTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(UserTestCase, cls).setUpClass()
-        try:
-            cls.client.user.delete(cls._test_user['username'])
-        except:
-            pass
-        try:
-            cls.client.user.delete(cls._test_user2['username'])
-        except:
-            pass
-
-    def test_create_user(self):
-        response = self.client.user.create(self._test_user2)
-        self.assertEqual(response.status_code, 201)
-        self.client.user.delete(self._test_user2['username'])
-
-    def test_list_users(self):
-        self.client.user.create(self._test_user)
-        response = self.client.user.read()
-        self.assertEqual(response.status_code, 200)
-        self.client.user.delete(self._test_user['username'])
-
-    def test_list_user(self):
-        self.client.user.create(self._test_user)
-        response = self.client.user.read(self._test_user['username'])
-        self.assertEqual(response.status_code, 200)
-        self.client.user.delete(self._test_user['username'])
-
-    def test_update_user(self):
-        self.client.user.create(self._test_user)
-        response = self.client.user.update(self._test_user2,
-                                           self._test_user['username'])
-        self.assertEqual(response.status_code, 200)
-        self.client.user.delete(self._test_user2['username'])
-
-    def test_delete_user(self):
-        self.client.user.create(self._test_user)
-        response = self.client.user.delete(self._test_user['username'])
-        self.assertEqual(response.status_code, 204)
-
-
-class GroupTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(GroupTestCase, cls).setUpClass()
-        try:
-            cls.client.group.delete(cls._test_group['name'])
-        except:
-            pass
-        try:
-            cls.client.group.delete(cls._test_group2['name'])
-        except:
-            pass
-
-    def test_create_group(self):
-        response = self.client.group.create(self._test_group2)
-        self.assertEqual(response.status_code, 201)
-        self.client.group.delete(self._test_group2['name'])
-
-    def test_list_groups(self):
-        self.client.group.create(self._test_group)
-        response = self.client.group.read()
-        self.assertEqual(response.status_code, 200)
-        self.client.group.delete(self._test_group['name'])
-
-    def test_list_group(self):
-        self.client.group.create(self._test_group)
-        response = self.client.group.read(self._test_group['name'])
-        self.assertEqual(response.status_code, 200)
-        self.client.group.delete(self._test_group['name'])
-
-    def test_update_group(self):
-        self.client.group.create(self._test_group)
-        response = self.client.group.update(self._test_group2,
-                                            self._test_group['name'])
-        self.assertEqual(response.status_code, 200)
-        self.client.group.delete(self._test_group2['name'])
-
-    def test_delete_group(self):
-        self.client.group.create(self._test_group)
-        response = self.client.group.delete(self._test_group['name'])
-        self.assertEqual(response.status_code, 204)
-
-
-class RoleTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(RoleTestCase, cls).setUpClass()
-        try:
-            cls.client.user.delete(cls._test_user['username'])
-        except:
-            pass
-        try:
-            cls.client.role.delete(cls._test_role['name'])
-        except:
-            pass
-        try:
-            cls.client.role.delete(cls._test_role2['name'])
-        except:
-            pass
-
-    def test_create_role(self):
-        response = self.client.role.create(self._test_role)
-        self.assertEqual(response.status_code, 201)
-        self.client.role.delete(self._test_role['name'])
-
-    def test_list_roles(self):
-        self.client.role.create(self._test_role)
-        response = self.client.role.read()
-        self.assertEqual(response.status_code, 200)
-        self.client.role.delete(self._test_role['name'])
-
-    def test_list_role(self):
-        self.client.role.create(self._test_role)
-        response = self.client.role.read(self._test_role['name'])
-        self.assertEqual(response.status_code, 200)
-        self.client.role.delete(self._test_role['name'])
-
-    def test_update_role(self):
-        self.client.role.create(self._test_role)
-        response = self.client.role.update(self._test_role2,
-                                           self._test_role['name'])
-        self.assertEqual(response.status_code, 200)
-        self.client.role.delete(self._test_role2['name'])
-
-    def test_delete_role(self):
-        self.client.role.create(self._test_role)
-        response = self.client.role.delete(self._test_role['name'])
-        self.assertEqual(response.status_code, 204)
-
-
-class BaseQuotaMixin(object):
-    @classmethod
-    def setUpClass(cls):
-        super(BaseQuotaMixin, cls).setUpClass()
-
-        """ Setup the class based upon the child class. """
-        # Test quota and quota update.
-        cls._test_quota = {
-            cls._test_quota_type: cls._test_entity[cls._test_entity_key],
-            'enforcement': 'notify',
-            'interval': 'monthly',
-            'disk_bytes_limit': 1073741824,
-            'xfer_bytes_limit': None
-        }
-        cls._test_quota_update = {
-            'enforcement': 'disable',
-            'interval': 'weekly',
-            'disk_bytes_limit': None
-        }
-
-        # Set the API of the entity and API of the entity quota.
-        cls.entity_api = getattr(cls.client, cls._test_quota_type)
-        cls.quota_api = getattr(cls.client.quota, cls._test_quota_type)
-
-        # Create an entity for the quota.
-        try:
-            cls.entity_api.create(cls._test_entity)
-        except:
-            pass
-        try:
-            cls.quota_api.delete(cls._test_quota[cls._test_quota_type])
-        except:
-            pass
-
-    @classmethod
-    def tearDownClass(cls):
-        # Remove any leftover quota and the entity used for testing.
-        super(BaseQuotaMixin, cls).tearDownClass()
-        name = cls._test_quota[cls._test_quota_type]
-        try:
-            cls.quota_api.delete(name)
-        except:
-            pass
-        try:
-            cls.entity_api.delete(name)
-        except:
-            pass
-
-    def test_create_quota(self):
-        response = self.quota_api.create(self._test_quota)
-        self.assertEqual(response.status_code, 201)
-        self.quota_api.delete(self._test_quota[self._test_quota_type])
-
-    def test_list_quotas(self):
-        self.quota_api.create(self._test_quota)
-        response = self.quota_api.read()
-        self.assertEqual(response.status_code, 200)
-        self.quota_api.delete(self._test_quota[self._test_quota_type])
-
-    def test_list_quota(self):
-        self.quota_api.create(self._test_quota)
-        response = self.quota_api.read(self._test_quota[self._test_quota_type])
-        self.assertEqual(response.status_code, 200)
-        self.quota_api.delete(self._test_quota[self._test_quota_type])
-
-    def test_update_quota(self):
-        self.quota_api.create(self._test_quota)
-        response = self.quota_api.update(
-            self._test_quota_update, self._test_quota[self._test_quota_type])
-        self.assertEqual(response.status_code, 200)
-        self.quota_api.delete(self._test_quota[self._test_quota_type])
-
-    def test_delete_quota(self):
-        self.quota_api.create(self._test_quota)
-        response = self.quota_api.delete(
-            self._test_quota[self._test_quota_type])
-        self.assertEqual(response.status_code, 204)
-
-
-class GroupQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
-    _test_quota_type = 'group'
-    _test_entity = BaseAPITestCase._test_group
-    _test_entity_key = 'name'
-
-
-class UserQuotaTestCase(BaseQuotaMixin, BaseAPITestCase):
-    _test_quota_type = 'user'
-    _test_entity = BaseAPITestCase._test_user
-    _test_entity_key = 'username'
-
-
-class BaseAccessMixin(object):
-    @classmethod
-    def setUpClass(cls):
-        """ Setup the class based upon the child class. """
-        super(BaseAccessMixin, cls).setUpClass()
-
-        cls._test_access = {
-            cls._test_access_type: cls._test_entity[cls._test_entity_key],
-            'path': '/',
-            'read': True,
-            'write': True,
-            'list': False,
-            'remove': False
-        }
-        cls._test_access_update = {
-            'read': False,
-            'remove': True
-        }
-
-        # Set the API of the entity and API of the entity access.
-        cls.entity_api = getattr(cls.client, cls._test_access_type)
-        cls.access_api = getattr(cls.client.access, cls._test_access_type)
-
-        # Create a path and an entity for the access.
-        try:
-            cls.client.path.upload(cls._test_remote_file, cls._test_local_file)
-        except:
-            pass
-        try:
-            cls.entity_api.create(cls._test_entity)
-        except:
-            pass
-        try:
-            cls.access_api.delete(cls._test_access[cls._test_access_type])
-        except:
-            pass
-
-    @classmethod
-    def tearDownClass(cls):
-        # Remove any leftover access, the entity and the path used for testing.
-        super(BaseAccessMixin, cls).tearDownClass()
-        name = cls._test_access[cls._test_access_type]
-        try:
-            cls.access_api.delete(name)
-        except:
-            pass
-        try:
-            cls.entity_api.delete(name)
-        except:
-            pass
-        try:
-            cls.client.path.delete(cls._test_remote_file)
-        except:
-            pass
-
-    def test_create_access(self):
-        response = self.access_api.create(self._test_access)
-        self.assertEqual(response.status_code, 201)
-        self.access_api.delete(self._test_access[self._test_access_type],
-                               response.json['id'])
-
-    def test_list_accesses(self):
-        """ List all accesses of access type. """
-        test_access = self.access_api.create(self._test_access)
-        response = self.access_api.read()
-        self.assertEqual(response.status_code, 200)
-        self.access_api.delete(self._test_access[self._test_access_type],
-                               test_access.json['id'])
-
-    def test_list_entity_accesses(self):
-        """ List all accesses of entity. """
-        test_access = self.access_api.create(self._test_access)
-        response = self.access_api.read(
-            self._test_access[self._test_access_type])
-        self.assertEqual(response.status_code, 200)
-        self.access_api.delete(self._test_access[self._test_access_type],
-                               test_access.json['id'])
-
-    def test_list_entity_access(self):
-        """ List specific access (using ID) of entity. """
-        test_access = self.access_api.create(self._test_access)
-        response = self.access_api.read(
-            self._test_access[self._test_access_type], test_access.json['id'])
-        self.assertEqual(response.status_code, 200)
-        self.access_api.delete(self._test_access[self._test_access_type],
-                               test_access.json['id'])
-
-    def test_update_access(self):
-        test_access = self.access_api.create(self._test_access)
-        response = self.access_api.update(
-            self._test_access_update,
-            self._test_access[self._test_access_type], test_access.json['id'])
-        self.assertEqual(response.status_code, 200)
-        self.access_api.delete(self._test_access[self._test_access_type],
-                               test_access.json['id'])
-
-    def test_delete_access(self):
-        test_access = self.access_api.create(self._test_access)
-        response = self.access_api.delete(
-            self._test_access[self._test_access_type], test_access.json['id'])
-        self.assertEqual(response.status_code, 204)
-
-
-class GroupAccessTestCase(BaseAccessMixin, BaseAPITestCase):
-    _test_access_type = 'group'
-    _test_entity = BaseAPITestCase._test_group
-    _test_entity_key = 'name'
-
-
-class UserAccessTestCase(BaseAccessMixin, BaseAPITestCase):
-    _test_access_type = 'user'
-    _test_entity = BaseAPITestCase._test_user
-    _test_entity_key = 'username'
-
-
-class PathAccessTestCase(BaseAPITestCase):
-    def test_list_entity_access(self):
-        """ List all accesses (using ID) of a path. """
-        response = self.client.path_tree.read('/')
-        response = self.client.access.path.read(response.json['id'])
-        self.assertEqual(response.status_code, 200)
-
-
-class BasePathTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(BasePathTestCase, cls).setUpClass()
-        try:
-            cls.client.path.remove(cls._test_remote_file)
-        except:
-            pass
-
-
-class PathTestCase(BasePathTestCase):
-    def test_file_upload(self):
-        response = self.client.path.upload(self._test_remote_file,
-                                           self._test_local_file)
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self._test_remote_file)
-
-    def test_file_download(self):
-        self.client.path.upload(self._test_remote_file, self._test_local_file)
-        response = self.client.path.download(self._test_downloaded_file,
-                                             self._test_remote_file)
-        cmp_result = filecmp.cmp(self._test_local_file,
-                                 self._test_downloaded_file)
-        try:
-            os.unlink(self._test_downloaded_file)
-        except:
-            pass
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self._test_remote_file)
-        self.assertTrue(cmp_result)
-
-    def test_file_remove(self):
-        """ Delete file using shortcut within Path API. """
-        self.client.path.upload(self._test_remote_file, self._test_local_file)
-        response = self.client.path.remove(self._test_remote_file)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json['result']['status'], 'SUCCESS')
-
-
-class PathOperTestCase(BasePathTestCase):
-    def test_file_remove(self):
-        # Create task to delete file.
-        self.client.path.upload(self._test_remote_file, self._test_local_file)
-        response = self.client.path_oper.remove(self._test_remote_file)
-        self.assertEqual(response.status_code, 200)
-
-        # Check that the task completed.
-        response = self.client.path_oper.poll(response.json['url'])
-        status = response.json['result']['status']
-        self.assertEqual(status, 'SUCCESS')
-
-
-class PathTreeTestCase(BasePathTestCase):
-    def test_file_list(self):
-        self.client.path.upload(self._test_remote_file, self._test_local_file)
-        response = self.client.path_tree.read(self._test_remote_file)
-        self.assertEqual(response.status_code, 200)
-        self.client.path.remove(self._test_remote_file)
-        self.assertEqual(response.json['path'], self._test_remote_file)
-
-    def test_file_non_existent_list(self):
-        with self.assertRaises(SmartFileResponseException) as cm:
-            self.client.path_tree.read(self._test_remote_file)
-        self.assertEqual(cm.exception.status_code, 404)
-
-    def test_directory_list(self):
-        response = self.client.path_tree.read('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json['path'], '/')
-
-    def test_directory_and_children_list(self):
-        response = self.client.path_tree.read('/', children=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('children', response.json)
-        self.assertGreater(len(response.json['children']), 0)
-
-
-class LinkTestCase(BaseAPITestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(LinkTestCase, cls).setUpClass()
-        cls.client.path.upload(cls._test_remote_file, cls._test_local_file)
-        try:
-            cls.client.link.delete(cls._test_link['name'])
-        except:
-            pass
-        try:
-            cls.client.link.delete(cls._test_link2['name'])
-        except:
-            pass
-
-    @classmethod
-    def tearDownClass(cls):
-        super(LinkTestCase, cls).tearDownClass()
-        cls.client.path.remove(cls._test_remote_file)
-
-    def test_create_link(self):
-        response = self.client.link.create(self._test_link)
-        self.assertEqual(response.status_code, 201)
-        self.client.link.delete(response.json['uid'])
-
-    def test_list_links(self):
-        response = self.client.link.create(self._test_link)
-        uid = response.json['uid']
-        response = self.client.link.read()
-        self.assertEqual(response.status_code, 200)
-        self.client.link.delete(uid)
-
-    def test_list_link(self):
-        response = self.client.link.create(self._test_link)
-        uid = response.json['uid']
-        response = self.client.link.read(uid)
-        self.assertEqual(response.status_code, 200)
-        self.client.link.delete(uid)
-
-    def test_update_link(self):
-        response = self.client.link.create(self._test_link)
-        response = self.client.link.update(self._test_link2,
-                                           response.json['uid'])
-        self.assertEqual(response.status_code, 200)
-        self.client.link.delete(response.json['uid'])
-
-    def test_delete_link(self):
-        response = self.client.link.create(self._test_link)
-        uid = response.json['uid']
-        response = self.client.link.delete(uid)
-        self.assertEqual(response.status_code, 204)
-
-
-class PingTestCase(BaseAPITestCase):
-    def test_ping(self):
-        response = self.client.ping.read()
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('ping', response.json)
-        self.assertEqual(response.json['ping'], 'pong')
+class MockHTTPServer(threading.Thread, HTTPServer):
+    allow_reuse_address = True
+
+    def __init__(self, handler, address='127.0.0.1', port=10080):
+        HTTPServer.__init__(self, (address, port), handler)
+        threading.Thread.__init__(self)
+        self.setDaemon(True)
+        self.start()
+
+    def run(self):
+        self.serve_forever()
+
+
+class MockHTTPRequestHandler(BaseHTTPRequestHandler):
+    class MockRequest(object):
+        def __init__(self, method, path, query=None, data=None):
+            self.method = method
+            self.path = path
+            self.query = query
+            self.data = data
+
+    def __init__(self, *args, **kwargs):
+        super(MockHTTPRequestHandler, self).__init__(*args, **kwargs)
+        self.requests = []
+
+    def record(self, method, path, query=None, data=None):
+        self.requests.append(MockHTTPRequestHandler.MockRequest(method, path,
+                             query=query, data=data))
+
+    def clear(self):
+        del self.requests[:]
+
+    def parse_and_record(self, method):
+        urlp = urlparse.urlparse(self.path)
+        query, data = urlparse.parse_qs(urlp.query), None
+        if method == 'POST':
+            l = int(self.headers['Content-Length'])
+            data = urlparse.parse_qs(self.rfile.read(l))
+        self.record(method, urlp.path, query=query, data=data)
+        return query, data
+
+    def do_GET(self):
+        query, post = self.parse_and_record('GET')
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("Hello World!")
+
+
+class MockServerTestCase(unittest.TestCase):
+    class TestHandler(MockHTTPRequestHandler):
+        pass
+
+    def setUp(self):
+        self.server = MockHTTPServer(self.TestHandler)
+
+    def tearDown(self):
+        self.server.shutdown()
+
+    def getClient(self):
+        return API.KeyClient(url='http://%s:%s/' % (self.server.server_name,
+                             self.server.server_port))
+
+
+class URLGenerationTestCase(MockServerTestCase):
+    "Tests that validate 'auto-generated' URLs."
+    def test_with_path(self):
+        client = self.getClient()
+        client.path.data.get('/the/file/path')
+        r = self.server.requests
+        self.assertEqual(len(r), 1)
+        self.assertEqual(r[0].method, 'GET')
+        self.assertEqual(r[0].path, '/path/data/the/file/path')
