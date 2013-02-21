@@ -12,6 +12,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 from smartfile import BasicClient
 from smartfile import OAuthClient
 from smartfile.errors import APIError
+from smartfile.errors import RequestError
 
 
 API_KEY = '8g1aq1UF2QfZTG47yEVhVLAFqyfDdp'
@@ -41,6 +42,12 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         self.server.requests.append(TestHTTPRequestHandler.TestRequest(method,
                                     path, query=query, data=data))
 
+    def respond(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("Hello World!")
+
     def parse_and_record(self, method):
         urlp = urlparse.urlparse(self.path)
         query, data = urlparse.parse_qs(urlp.query), None
@@ -48,10 +55,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
             l = int(self.headers['Content-Length'])
             data = urlparse.parse_qs(self.rfile.read(l))
         self.record(method, urlp.path, query=query, data=data)
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write("Hello World!")
+        self.respond()
 
     def log_message(self, *args, **kwargs):
         if self.verbose:
@@ -84,32 +88,6 @@ class TestHTTPServer(threading.Thread, HTTPServer):
     def run(self):
         self.serve_forever()
 
-    def assertOneRequest(self):
-        requests = len(self.requests)
-        if requests > 1:
-            raise AssertionError('More than 1 request performed: %s' % requests)
-        elif requests < 1:
-            raise AssertionError('Less than 1 request performed')
-
-    def assertMethod(self, method):
-        try:
-            request = self.requests[0]
-        except IndexError:
-            raise AssertionError('Cannot assert method without request')
-        if request.method != method:
-            raise AssertionError('%s is not %s method' % (method,
-                                 request.method))
-
-    def assertPath(self, path):
-        try:
-            request = self.requests[0]
-        except IndexError:
-            raise AssertionError('Cannot assert path without request')
-        if request.path != path:
-            raise AssertionError('"%s" is not equal to "%s"' % (path,
-                                 request.path))
-
-
 class TestServerTestCase(unittest.TestCase):
     """
     Test case that starts our test HTTP server.
@@ -119,6 +97,32 @@ class TestServerTestCase(unittest.TestCase):
 
     def tearDown(self):
         self.server.shutdown()
+
+    def assertRequestCount(self, num=1):
+        requests = len(self.server.requests)
+        if requests > num:
+            raise AssertionError('More than %s request performed: %s' % (num,
+                                 requests))
+        elif requests < num:
+            raise AssertionError('Less than %s request performed' % num)
+
+    def assertMethod(self, method):
+        try:
+            request = self.server.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert method without request')
+        if request.method != method:
+            raise AssertionError('%s is not %s method' % (method,
+                                 request.method))
+
+    def assertPath(self, path):
+        try:
+            request = self.server.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert path without request')
+        if request.path != path:
+            raise AssertionError('"%s" is not equal to "%s"' % (path,
+                                 request.path))
 
 
 class BasicTestCase(TestServerTestCase):
@@ -146,20 +150,20 @@ class UrlGenerationTestCase(object):
     def test_with_path_id(self):
         client = self.getClient()
         client.path.data.read('/the/file/path')
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/2.0/path/data/the/file/path')
+        self.assertMethod('GET')
+        self.assertPath('/api/2.0/path/data/the/file/path')
 
     def test_with_int_id(self):
         client = self.getClient()
         client.access.user.read(42)
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/2.0/access/user/42')
+        self.assertMethod('GET')
+        self.assertPath('/api/2.0/access/user/42')
 
     def test_with_version(self):
         client = self.getClient(version='3.1')
         client.ping.read()
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/3.1/ping')
+        self.assertMethod('GET')
+        self.assertPath('/api/3.1/ping')
 
 
 class MethodTestCase(object):
@@ -167,22 +171,22 @@ class MethodTestCase(object):
     def test_create_is_POST(self):
         client = self.getClient()
         client.user.create(username='bobafett', email='bobafett@kamino.edu')
-        self.server.assertMethod('POST')
+        self.assertMethod('POST')
 
     def test_read_is_GET(self):
         client = self.getClient()
         client.user.read('bobafett')
-        self.server.assertMethod('GET')
+        self.assertMethod('GET')
 
     def test_update_is_POST(self):
         client = self.getClient()
         client.user.update('bobafett', full_name='Boba Fett')
-        self.server.assertMethod('POST')
+        self.assertMethod('POST')
 
     def test_delete_is_DELETE(self):
         client = self.getClient()
         client.user.delete('bobafett')
-        self.server.assertMethod('DELETE')
+        self.assertMethod('DELETE')
 
 
 class BasicEnvironTestCase(BasicTestCase):
@@ -202,8 +206,8 @@ class BasicEnvironTestCase(BasicTestCase):
         # environment variables.
         client = self.getClient(key=None, password=None)
         client.ping.read()
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/2.0/ping')
+        self.assertMethod('GET')
+        self.assertPath('/api/2.0/ping')
 
 
 class OAuthEnvironTestCase(OAuthTestCase):
@@ -227,8 +231,8 @@ class OAuthEnvironTestCase(OAuthTestCase):
         # environment variables.
         client = self.getClient(client_token=None, client_secret=None)
         client.ping.read()
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/2.0/ping')
+        self.assertMethod('GET')
+        self.assertPath('/api/2.0/ping')
 
 
 class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
@@ -243,6 +247,32 @@ class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
     def test_blank_client_token(self):
         client = self.getClient(access_token='', access_secret='')
         self.assertRaises(APIError, client.ping.read)
+
+
+class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
+    def respond(self):
+        self.send_response(503)
+        self.send_header("X-Throttle", "throttled; next=0.01 sec")
+        self.end_headers()
+        self.wfile.write("Request Throttled!")
+
+
+class ThrottleTestCase(object):
+    def setUp(self):
+        self.server = TestHTTPServer(handler=HTTPThrottleRequestHandler)
+
+    def test_throttle_GET(self):
+        client = self.getClient()
+        self.assertRaises(RequestError, client.ping.read)
+        self.assertRequestCount(3)
+
+
+class BasicThrottleTestCase(ThrottleTestCase, BasicTestCase):
+    pass
+
+
+class OAuthThrottleTestCase(ThrottleTestCase, OAuthTestCase):
+    pass
 
 
 # TODO: Test with missing oauthlib...

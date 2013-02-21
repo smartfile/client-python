@@ -1,3 +1,4 @@
+from simplejson import JSONDecodeError
 
 
 class APIError(Exception):
@@ -21,13 +22,16 @@ class ResponseError(APIError):
     def __init__(self, response, *args, **kwargs):
         self.response = response
         self.status_code = response.status_code
-        json = response.json()
-        if not json or not 'detail' in json:
-            self.detail = u'Server error; check response for errors'
-        elif self.status_code == 400:
-            self.detail = json['field_errors']
-        else:
-            self.detail = json['detail']
+        try:
+            json = response.json()
+            if not json or not 'detail' in json:
+                self.detail = u'Server error; check response for errors'
+            elif self.status_code == 400:
+                self.detail = json['field_errors']
+            else:
+                self.detail = json['detail']
+        except JSONDecodeError:
+            pass
         super(ResponseError, self).__init__(*args, **kwargs)
 
     def __str__(self):
