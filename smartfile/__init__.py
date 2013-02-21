@@ -92,7 +92,10 @@ class Client(Endpoint):
         else:
             if response.status_code >= 400:
                 raise ResponseError(response)
-        return response.json()
+        try:
+            return response.json()
+        except ValueError:
+            pass
 
     def _request(self, method, path, **kwargs):
         "Handles retrying failed requests and error handling."

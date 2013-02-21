@@ -151,19 +151,19 @@ class UrlGenerationTestCase(object):
         client = self.getClient()
         client.path.data.read('/the/file/path')
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/path/data/the/file/path')
+        self.assertPath('/api/2.0/path/data/the/file/path/')
 
     def test_with_int_id(self):
         client = self.getClient()
         client.access.user.read(42)
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/access/user/42')
+        self.assertPath('/api/2.0/access/user/42/')
 
     def test_with_version(self):
         client = self.getClient(version='3.1')
         client.ping.read()
         self.assertMethod('GET')
-        self.assertPath('/api/3.1/ping')
+        self.assertPath('/api/3.1/ping/')
 
 
 class MethodTestCase(object):
@@ -207,7 +207,7 @@ class BasicEnvironTestCase(BasicTestCase):
         client = self.getClient(key=None, password=None)
         client.ping.read()
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/ping')
+        self.assertPath('/api/2.0/ping/')
 
 
 class OAuthEnvironTestCase(OAuthTestCase):
@@ -232,7 +232,7 @@ class OAuthEnvironTestCase(OAuthTestCase):
         client = self.getClient(client_token=None, client_secret=None)
         client.ping.read()
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/ping')
+        self.assertPath('/api/2.0/ping/')
 
 
 class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
