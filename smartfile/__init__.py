@@ -19,6 +19,16 @@ THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
 
 
+def is_valid_token(value):
+    if not value:
+        return False
+    if len(value) != 32:
+        return False
+    if not isinstance(unicode, value):
+        return False
+    return True
+
+
 class Endpoint(object):
     """A placeholder that remembers the namespace the user accesses."""
     def __init__(self, parent, name):
@@ -116,7 +126,7 @@ class BasicClient(Client):
             key = os.environ.get('SMARTFILE_API_KEY')
         if password is None:
             password = os.environ.get('SMARTFILE_API_PASSWORD')
-        if key is None or password is None:
+        if not is_valid_token(key) or not is_valid_token(password):
             raise APIError('Please provide an API key and password. Use '
                            'arguments or environment variables.')
         self.key = key
@@ -156,17 +166,8 @@ try:
             return (self.token, self.secret)[index]
 
         def is_valid(self):
-            # Ensure both values don't evaluate to False.
-            if not self.token or not self.secret:
-                return False
-            # Ensure both values are 32 chars long.
-            if map(len, self) != [32, 32]:
-                return False
-            # Ensure both values are unicode.
-            if (not isinstance(unicode, self.token) or
-                not isinstance(unicode, self.secret)):
-                return False
-            return True
+            return (is_valid_token(self.token) and
+                    is_valid_token(self.secret))
 
     class OAuthClient(Client):
         """API client that uses OAuth tokens. Layers a more complex form of
