@@ -9,8 +9,7 @@ import threading
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
-from smartfile import API
-from smartfile.exceptions import SmartFileResponseException
+from smartfile import KeyClient
 
 
 class MockHTTPServer(threading.Thread, HTTPServer):
@@ -19,11 +18,37 @@ class MockHTTPServer(threading.Thread, HTTPServer):
     def __init__(self, handler, address='127.0.0.1', port=10080):
         HTTPServer.__init__(self, (address, port), handler)
         threading.Thread.__init__(self)
+        self.requests = []
         self.setDaemon(True)
         self.start()
 
     def run(self):
         self.serve_forever()
+
+    def assertOneRequest(self):
+        requests = len(self.requests)
+        if requests > 1:
+            raise AssertionError('More than 1 request performed: %s' % requests)
+        elif requests < 1:
+            raise AssertionError('Less than 1 request performed')
+
+    def assertMethod(self, method):
+        try:
+            request = self.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert method without request')
+        if request.method != method:
+            raise AssertionError('%s is not %s method' % (method,
+                                 request.method))
+
+    def assertPath(self, path):
+        try:
+            request = self.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert path without request')
+        if request.path != path:
+            raise AssertionError('"%s" is not equal to "%s"' % (path,
+                                 request.path))
 
 
 class MockHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -35,15 +60,11 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             self.data = data
 
     def __init__(self, *args, **kwargs):
-        super(MockHTTPRequestHandler, self).__init__(*args, **kwargs)
-        self.requests = []
+        BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def record(self, method, path, query=None, data=None):
-        self.requests.append(MockHTTPRequestHandler.MockRequest(method, path,
-                             query=query, data=data))
-
-    def clear(self):
-        del self.requests[:]
+        self.server.requests.append(MockHTTPRequestHandler.MockRequest(method,
+                                    path, query=query, data=data))
 
     def parse_and_record(self, method):
         urlp = urlparse.urlparse(self.path)
@@ -73,16 +94,18 @@ class MockServerTestCase(unittest.TestCase):
         self.server.shutdown()
 
     def getClient(self):
-        return API.KeyClient(url='http://%s:%s/' % (self.server.server_name,
-                             self.server.server_port))
+        return KeyClient('foo', 'bar', url='http://%s:%s/' % (
+                         self.server.server_name, self.server.server_port))
 
 
 class URLGenerationTestCase(MockServerTestCase):
     "Tests that validate 'auto-generated' URLs."
     def test_with_path(self):
         client = self.getClient()
-        client.path.data.get('/the/file/path')
-        r = self.server.requests
-        self.assertEqual(len(r), 1)
-        self.assertEqual(r[0].method, 'GET')
-        self.assertEqual(r[0].path, '/path/data/the/file/path')
+        client.path.data.read('/the/file/path')
+        self.server.assertMethod('GET')
+        self.server.assertPath('/2.0/path/data/the/file/path')
+
+
+if __name__ == '__main__':
+    unittest.main()

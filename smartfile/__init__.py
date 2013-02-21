@@ -119,7 +119,7 @@ class KeyClient(Client):
                            'arguments or environment variables.')
         self.key = key
         self.password = password
-        super(KeyClient, self).__init__(self, **kwargs)
+        super(KeyClient, self).__init__(**kwargs)
 
     def _request(self, *args, **kwargs):
         # Add the token authentication
