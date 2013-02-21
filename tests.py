@@ -12,11 +12,11 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 from smartfile import KeyClient
 
 
-class MockHTTPServer(threading.Thread, HTTPServer):
+class TestHTTPServer(threading.Thread, HTTPServer):
     allow_reuse_address = True
 
-    def __init__(self, handler, address='127.0.0.1', port=10080):
-        HTTPServer.__init__(self, (address, port), handler)
+    def __init__(self, address='127.0.0.1'):
+        HTTPServer.__init__(self, (address, 0), TestHTTPRequestHandler)
         threading.Thread.__init__(self)
         self.requests = []
         self.setDaemon(True)
@@ -51,8 +51,8 @@ class MockHTTPServer(threading.Thread, HTTPServer):
                                  request.path))
 
 
-class MockHTTPRequestHandler(BaseHTTPRequestHandler):
-    class MockRequest(object):
+class TestHTTPRequestHandler(BaseHTTPRequestHandler):
+    class TestRequest(object):
         def __init__(self, method, path, query=None, data=None):
             self.method = method
             self.path = path
@@ -63,7 +63,7 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def record(self, method, path, query=None, data=None):
-        self.server.requests.append(MockHTTPRequestHandler.MockRequest(method,
+        self.server.requests.append(TestHTTPRequestHandler.TestRequest(method,
                                     path, query=query, data=data))
 
     def parse_and_record(self, method):
@@ -84,11 +84,8 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 class MockServerTestCase(unittest.TestCase):
-    class TestHandler(MockHTTPRequestHandler):
-        pass
-
     def setUp(self):
-        self.server = MockHTTPServer(self.TestHandler)
+        self.server = TestHTTPServer()
 
     def tearDown(self):
         self.server.shutdown()

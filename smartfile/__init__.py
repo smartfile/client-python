@@ -32,13 +32,19 @@ class Endpoint(object):
         """Assembles the path, locates the API client on the endpoint stack,
         and asks it to make the API call."""
         path, obj = [], self
+        # Walk down the stack until we encounter the Client instance, this is
+        # located at the bottom.
         while not isinstance(obj, Client):
+            # Insert each "name" from the stack into our path. This will
+            # preserve their order (insert vs. append).
             path.insert(0, obj.name)
+            # grab the next item on the stack, then interate.
             obj = obj.parent
+        # If we received an ID, append it to the path.
         if id:
             path.append(id)
         # obj is now our API client. path contains all the names (url
-        # fragments).
+        # fragments) and the optional ID.
         obj._request(method, path, **kwargs)
 
     def create(self, **kwargs):
