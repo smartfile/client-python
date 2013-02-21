@@ -56,24 +56,28 @@ class Endpoint(object):
             path.append(str(id))
         # obj is now our API client. path contains all the names (url
         # fragments) and the optional ID.
-        obj._request(method, path, **kwargs)
+        return obj._request(method, path, **kwargs)
 
     def create(self, **kwargs):
-        self._request('post', data=kwargs)
+        return self._request('post', data=kwargs)
 
     def read(self, id=None, **kwargs):
-        self._request('get', id=id, data=kwargs)
+        return self._request('get', id=id, data=kwargs)
 
     def update(self, id=None, **kwargs):
-        self._request('post', id=id, data=kwargs)
+        return self._request('post', id=id, data=kwargs)
 
     def delete(self, id=None, **kwargs):
-        self._request('delete', id=id, data=kwargs)
+        return self._request('delete', id=id, data=kwargs)
 
 
 class Client(Endpoint):
     """Base API client, handles communication, retry, versioning etc."""
-    def __init__(self, url=API_URL, version=API_VER, throttle_wait=True):
+    def __init__(self, url=None, version=API_VER, throttle_wait=True):
+        if url is None:
+            url = os.environ.get('SMARTFILE_API_URL')
+        if url is None:
+            url = API_URL
         self.url = url
         self.version = version
         self.throttle_wait = throttle_wait
@@ -88,7 +92,7 @@ class Client(Endpoint):
         else:
             if response.status_code >= 400:
                 raise ResponseError(response)
-        return response
+        return response.json()
 
     def _request(self, method, path, **kwargs):
         "Handles retrying failed requests and error handling."
@@ -98,6 +102,8 @@ class Client(Endpoint):
         # Join fragments into a URL
         path = ['api', self.version] + path
         path = '/'.join(path)
+        if not path.endswith('/'):
+            path += '/'
         while '//' in path:
             path = path.replace('//', '/')
         url = self.url + path
