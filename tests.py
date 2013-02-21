@@ -9,11 +9,14 @@ import threading
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
-from smartfile import KeyClient
+from smartfile import BasicClient
+from smartfile import OAuthClient
 
 
 API_KEY = ''
 API_PASSWORD = ''
+CLIENT_TOKEN = ''
+CLIENT_SECRET = ''
 
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -114,36 +117,26 @@ class TestServerTestCase(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
 
+
+class BasicTestCase(TestServerTestCase):
     def getClient(self, **kwargs):
         kwargs.setdefault('key', API_KEY)
         kwargs.setdefault('password', API_PASSWORD)
         kwargs.setdefault('url', 'http://%s:%s/' % (
                           self.server.server_name, self.server.server_port))
-        return KeyClient(**kwargs)
+        return BasicClient(**kwargs)
 
 
-class EnvironTestCase(TestServerTestCase):
-    "Tests that the API client reads settings from ENV."
-    def setUp(self):
-        super(EnvironTestCase, self).setUp()
-        os.environ['SMARTFILE_API_KEY'] = API_KEY
-        os.environ['SMARTFILE_API_PASSWORD'] = API_KEY
-
-    def tearDown(self):
-        super(EnvironTestCase, self).tearDown()
-        del os.environ['SMARTFILE_API_KEY']
-        del os.environ['SMARTFILE_API_PASSWORD']
-
-    def test_read_from_env(self):
-        # Blank out the credentials, the client should read them from the
-        # environment variables.
-        client = self.getClient(key=None, password=None)
-        client.ping.read()
-        self.server.assertMethod('GET')
-        self.server.assertPath('/api/2.0/ping')
+class OAuthTestCase(TestServerTestCase):
+    def getClient(self, **kwargs):
+        kwargs.setdefault('client_token', CLIENT_TOKEN)
+        kwargs.setdefault('client_secret', CLIENT_SECRET)
+        kwargs.setdefault('url', 'http://%s:%s/' % (
+                          self.server.server_name, self.server.server_port))
+        return OAuthClient(**kwargs)
 
 
-class UrlGenerationTestCase(TestServerTestCase):
+class UrlGenerationTestCase(object):
     "Tests that validate 'auto-generated' URLs."
     def test_with_path_id(self):
         client = self.getClient()
@@ -164,7 +157,7 @@ class UrlGenerationTestCase(TestServerTestCase):
         self.server.assertPath('/api/3.1/ping')
 
 
-class MethodTestCase(TestServerTestCase):
+class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_create_is_POST(self):
         client = self.getClient()
@@ -185,6 +178,56 @@ class MethodTestCase(TestServerTestCase):
         client = self.getClient()
         client.user.delete('bobafett')
         self.server.assertMethod('DELETE')
+
+
+class BasicEnvironTestCase(BasicTestCase):
+    "Tests that the API client reads settings from ENV."
+    def setUp(self):
+        super(BasicEnvironTestCase, self).setUp()
+        os.environ['SMARTFILE_API_KEY'] = API_KEY
+        os.environ['SMARTFILE_API_PASSWORD'] = API_KEY
+
+    def tearDown(self):
+        super(BasicEnvironTestCase, self).tearDown()
+        del os.environ['SMARTFILE_API_KEY']
+        del os.environ['SMARTFILE_API_PASSWORD']
+
+    def test_read_from_env(self):
+        # Blank out the credentials, the client should read them from the
+        # environment variables.
+        client = self.getClient(key=None, password=None)
+        client.ping.read()
+        self.server.assertMethod('GET')
+        self.server.assertPath('/api/2.0/ping')
+
+
+class OAuthEnvironTestCase(OAuthTestCase):
+    "Tests that the API client reads settings from ENV."
+    def setUp(self):
+        super(OAuthEnvironTestCase, self).setUp()
+        os.environ['SMARTFILE_CLIENT_TOKEN'] = CLIENT_TOKEN
+        os.environ['SMARTFILE_CLIENT_SECRET'] = CLIENT_SECRET
+
+    def tearDown(self):
+        super(OAuthEnvironTestCase, self).tearDown()
+        del os.environ['SMARTFILE_CLIENT_TOKEN']
+        del os.environ['SMARTFILE_CLIENT_SECRET']
+
+    def test_read_from_env(self):
+        # Blank out the credentials, the client should read them from the
+        # environment variables.
+        client = self.getClient(client_token=None, client_secret=None)
+        client.ping.read()
+        self.server.assertMethod('GET')
+        self.server.assertPath('/api/2.0/ping')
+
+
+class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
+    pass
+
+
+class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
+    pass
 
 
 if __name__ == '__main__':

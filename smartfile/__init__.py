@@ -108,7 +108,7 @@ class Client(Endpoint):
                 raise
 
 
-class KeyClient(Client):
+class BasicClient(Client):
     """API client that uses a key and password. Layers a simple form of
     authentication on the base Client."""
     def __init__(self, key=None, password=None, **kwargs):
@@ -121,12 +121,12 @@ class KeyClient(Client):
                            'arguments or environment variables.')
         self.key = key
         self.password = password
-        super(KeyClient, self).__init__(**kwargs)
+        super(BasicClient, self).__init__(**kwargs)
 
     def _request(self, *args, **kwargs):
         # Add the token authentication
         kwargs['auth'] = (self.key, self.password)
-        return super(KeyClient, self)._request(*args, **kwargs)
+        return super(BasicClient, self)._request(*args, **kwargs)
 
 
 try:
@@ -151,6 +151,11 @@ try:
         def __getitem__(self, index):
             return (self.token, self.secret)[index]
 
+        def is_valid(self):
+            if self.token is None or self.secret is None:
+                return False
+            return True
+
     class OAuthClient(Client):
         """API client that uses OAuth tokens. Layers a more complex form of
         authentication useful for 3rd party access on top of the base Client."""
@@ -160,37 +165,35 @@ try:
                 client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
             if client_secret is None:
                 client_secret = os.environ.get('SMARTFILE_CLIENT_SECRET')
-            if not client_token or not client_secret:
-                raise APIError('You must provide a client_token and client_secret '
-                               'for OAuth.')
             if access_token is None:
                 access_token = os.environ.get('SMARTFILE_ACCESS_TOKEN')
             if access_secret is None:
                 access_secret = os.environ.get('SMARTFILE_ACCESS_SECRET')
-            self.client = OAuthToken(client_token, client_secret)
-            if access_token and access_secret:
-                self.access = OAuthToken(access_token, access_secret)
-            else:
-                self.access = None
+            self.__client = OAuthToken(client_token, client_secret)
+            if not self.__client.is_valid():
+                raise APIError('You must provide a client_token and client_secret '
+                               'for OAuth.')
+            self.__access = OAuthToken(access_token, access_secret)
             super(OAuthClient, self).__init__(**kwargs)
 
-        def _request(self, method, path, id, **kwargs):
-            if self.access is None:
+        def _request(self, *args, **kwargs):
+            if not self.__access.is_valid():
                 raise APIError('You must obtain an access token before making API '
                                'calls.')
             # Add the OAuth parameters.
-            kwargs['auth'] = OAuth1(self.client.token,
-                                    client_secret=self.client.secret,
-                                    resource_owner_key=self.access.token,
-                                    resource_owner_secret=self.access.secret,
+            kwargs['auth'] = OAuth1(self.__client.token,
+                                    client_secret=self.__client.secret,
+                                    resource_owner_key=self.__access.token,
+                                    resource_owner_secret=self.__access.secret,
                                     signature_method=SIGNATURE_PLAINTEXT)
-            return super(OAuthClient, self)._request(method, path, id, **kwargs)
+            return super(OAuthClient, self)._request(*args, **kwargs)
 
         def get_request_token(self, callback=None):
             "The first step of the OAuth workflow."
             if callback:
                 callback = unicode(callback)
-            oauth = OAuth1(self.client.token, client_secret=self.client.secret,
+            oauth = OAuth1(self.__client.token,
+                           client_secret=self.__client.secret,
                            callback_uri=callback,
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
@@ -208,7 +211,8 @@ try:
             API calls."""
             if verifier:
                 verifier = unicode(verifier)
-            oauth = OAuth1(self.client.token, client_secret=self.client.secret,
+            oauth = OAuth1(self.__client.token,
+                           client_secret=self.__client.secret,
                            resource_owner_key=request.token,
                            resource_owner_secret=request.secret,
                            verifier=unicode(verifier),
