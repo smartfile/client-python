@@ -104,7 +104,7 @@ class URLGenerationTestCase(MockServerTestCase):
         client = self.getClient()
         client.path.data.read('/the/file/path')
         self.server.assertMethod('GET')
-        self.server.assertPath('/2.0/path/data/the/file/path')
+        self.server.assertPath('/api/2.0/path/data/the/file/path')
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ class Endpoint(object):
         and asks it to make the API call."""
         path, obj = [], self
         while not isinstance(obj, Client):
-            path.append(obj.name)
+            path.insert(0, obj.name)
             obj = obj.parent
         if id:
             path.append(id)
@@ -79,10 +79,11 @@ class Client(Endpoint):
         if not callable(request):
             raise RequestError('Invalid method %s' % method)
         # Join fragments into a URL
-        fragments = [self.url, 'api', self.version] + path
-        url = '/'.join(fragments)
-        if not url.endswith('/'):
-            url += '/'
+        path = ['api', self.version] + path
+        path = '/'.join(path)
+        while '//' in path:
+            path = path.replace('//', '/')
+        url = self.url + path
         # Now try the request, if we get throttled, sleep and try again.
         trys, retrys = 0, 3
         while True:
