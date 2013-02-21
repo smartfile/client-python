@@ -11,6 +11,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 
 from smartfile import BasicClient
 from smartfile import OAuthClient
+from smartfile.errors import APIError
 
 
 API_KEY = '8g1aq1UF2QfZTG47yEVhVLAFqyfDdp'
@@ -230,12 +231,26 @@ class OAuthEnvironTestCase(OAuthTestCase):
         self.server.assertPath('/api/2.0/ping')
 
 
-class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
-    pass
-
-
 class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
-    pass
+    def test_blank_credentials(self):
+        self.assertRaises(APIError, self.getClient, key='', password='')
+
+
+class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
+    def test_blank_client_token(self):
+        self.assertRaises(APIError, self.getClient, client_token='', client_secret='')
+
+    def test_blank_client_token(self):
+        client = self.getClient(access_token='', access_secret='')
+        self.assertRaises(APIError, client.ping.read)
+
+
+# TODO: Test with missing oauthlib...
+# Must invoke an ImportError when smartfile tries to import it. Then the test
+# case should verify that the correct exception (NotImplementedError) is raised
+# when OAuth is used...
+#
+# http://stackoverflow.com/questions/2481511/mocking-importerror-in-python
 
 
 if __name__ == '__main__':
