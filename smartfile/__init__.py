@@ -42,7 +42,7 @@ class Endpoint(object):
             obj = obj.parent
         # If we received an ID, append it to the path.
         if id:
-            path.append(id)
+            path.append(str(id))
         # obj is now our API client. path contains all the names (url
         # fragments) and the optional ID.
         obj._request(method, path, **kwargs)
