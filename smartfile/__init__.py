@@ -173,10 +173,10 @@ try:
                                'calls.')
             # Add the OAuth parameters.
             kwargs['auth'] = OAuth1(self.client.token,
-                          client_secret=self.client.secret,
-                          resource_owner_key=self.access.token,
-                          resource_owner_secret=self.access.secret,
-                          signature_method=SIGNATURE_PLAINTEXT)
+                                    client_secret=self.client.secret,
+                                    resource_owner_key=self.access.token,
+                                    resource_owner_secret=self.access.secret,
+                                    signature_method=SIGNATURE_PLAINTEXT)
             return super(OAuthClient, self)._request(method, path, id, **kwargs)
 
         def get_request_token(self, callback=None):
@@ -221,5 +221,6 @@ except ImportError:
     # "instantiate" it, they receive an exception.
     def OAuthClient(*args, **kwargs):
         raise NotImplementedError('You must install oauthlib and '
-            'requests_oauthlib to use the OAuthClient. Try "pip install '
-            'requests_oauthlib" to install both.')
+                                  'requests_oauthlib to use the OAuthClient. '
+                                  'Try "pip install requests_oauthlib" to '
+                                  'install both.')
