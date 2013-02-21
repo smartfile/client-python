@@ -139,9 +139,13 @@ try:
 
     class OAuthToken(object):
         "Internal representation of an OAuth (token, secret) tuple."
-        def __init__(self, token, secret):
-            self.token = unicode(token)
-            self.secret = unicode(secret)
+        def __init__(self, token=None, secret=None):
+            if not token is None:
+                token = unicode(token)
+            self.token = token
+            if not secret is None:
+                secret = unicode(secret)
+            self.secret = secret
 
         def __iter__(self):
             yield self.token
