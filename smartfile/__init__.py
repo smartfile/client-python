@@ -156,7 +156,15 @@ try:
             return (self.token, self.secret)[index]
 
         def is_valid(self):
+            # Ensure both values don't evaluate to False.
             if not self.token or not self.secret:
+                return False
+            # Ensure both values are 32 chars long.
+            if map(len, self) != [32, 32]:
+                return False
+            # Ensure both values are unicode.
+            if (not isinstance(unicode, self.token) or
+                not isinstance(unicode, self.secret)):
                 return False
             return True
 
