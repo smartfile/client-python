@@ -1,6 +1,6 @@
-.. figure:: https://travis-ci.org/smartfile/smartfile-client-python.png
+.. figure:: https://travis-ci.org/smartfile/client-python.png
    :alt: Travis CI Status
-   :target: https://travis-ci.org/smartfile/smartfile-client-python
+   :target: https://travis-ci.org/smartfile/client-python
 
 A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
 uses and contributes to Open Source software.

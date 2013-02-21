@@ -2,8 +2,8 @@ test:
 	python tests.py
 
 verify:
-	pyflakes django_secureform
-	pep8 --exclude=migrations --ignore=E501,E225 django_secureform
+	pyflakes smartfile
+	pep8 --exclude=migrations --ignore=E501,E225 smartfile
 
 install:
 	python setup.py install

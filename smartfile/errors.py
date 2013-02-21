@@ -1,4 +1,3 @@
-from requests.exceptions import ConnectionError
 
 
 class APIError(Exception):

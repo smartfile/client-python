@@ -4,13 +4,8 @@ import requests
 import time
 import urllib
 import urlparse
-import optparse
-import pprint
 
 from requests.exceptions import RequestException
-
-from os.path import basename
-from os.path import dirname
 
 from smartfile.errors import APIError
 from smartfile.errors import RequestError
@@ -148,7 +143,6 @@ try:
 
         def __getitem__(self, index):
             return (self.token, self.secret)[index]
-
 
     class OAuthClient(Client):
         """API client that uses OAuth tokens. Layers a more complex form of
