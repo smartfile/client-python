@@ -12,46 +12,14 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 from smartfile import KeyClient
 
 
-class TestHTTPServer(threading.Thread, HTTPServer):
-    allow_reuse_address = True
-
-    def __init__(self, address='127.0.0.1'):
-        HTTPServer.__init__(self, (address, 0), TestHTTPRequestHandler)
-        threading.Thread.__init__(self)
-        self.requests = []
-        self.setDaemon(True)
-        self.start()
-
-    def run(self):
-        self.serve_forever()
-
-    def assertOneRequest(self):
-        requests = len(self.requests)
-        if requests > 1:
-            raise AssertionError('More than 1 request performed: %s' % requests)
-        elif requests < 1:
-            raise AssertionError('Less than 1 request performed')
-
-    def assertMethod(self, method):
-        try:
-            request = self.requests[0]
-        except IndexError:
-            raise AssertionError('Cannot assert method without request')
-        if request.method != method:
-            raise AssertionError('%s is not %s method' % (method,
-                                 request.method))
-
-    def assertPath(self, path):
-        try:
-            request = self.requests[0]
-        except IndexError:
-            raise AssertionError('Cannot assert path without request')
-        if request.path != path:
-            raise AssertionError('"%s" is not equal to "%s"' % (path,
-                                 request.path))
+API_KEY = ''
+API_PASSWORD = ''
 
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
+    """
+    A simple handler that logs requests for examination.
+    """
     class TestRequest(object):
         def __init__(self, method, path, query=None, data=None):
             self.method = method
@@ -93,16 +61,86 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         self.parse_and_record('DELETE')
 
 
+class TestHTTPServer(threading.Thread, HTTPServer):
+    """
+    A simple server that logs requests for examination. Provides some basic
+    assertions that should aid in test development.
+    """
+    allow_reuse_address = True
+
+    def __init__(self, address='127.0.0.1', port=0, handler=TestHTTPRequestHandler):
+        HTTPServer.__init__(self, (address, port), handler)
+        threading.Thread.__init__(self)
+        self.requests = []
+        self.setDaemon(True)
+        self.start()
+
+    def run(self):
+        self.serve_forever()
+
+    def assertOneRequest(self):
+        requests = len(self.requests)
+        if requests > 1:
+            raise AssertionError('More than 1 request performed: %s' % requests)
+        elif requests < 1:
+            raise AssertionError('Less than 1 request performed')
+
+    def assertMethod(self, method):
+        try:
+            request = self.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert method without request')
+        if request.method != method:
+            raise AssertionError('%s is not %s method' % (method,
+                                 request.method))
+
+    def assertPath(self, path):
+        try:
+            request = self.requests[0]
+        except IndexError:
+            raise AssertionError('Cannot assert path without request')
+        if request.path != path:
+            raise AssertionError('"%s" is not equal to "%s"' % (path,
+                                 request.path))
+
+
 class TestServerTestCase(unittest.TestCase):
+    """
+    Test case that starts our test HTTP server.
+    """
     def setUp(self):
         self.server = TestHTTPServer()
 
     def tearDown(self):
         self.server.shutdown()
 
-    def getClient(self):
-        return KeyClient('foo', 'bar', url='http://%s:%s/' % (
-                         self.server.server_name, self.server.server_port))
+    def getClient(self, **kwargs):
+        kwargs.setdefault('key', API_KEY)
+        kwargs.setdefault('password', API_PASSWORD)
+        kwargs.setdefault('url', 'http://%s:%s/' % (
+                          self.server.server_name, self.server.server_port))
+        return KeyClient(**kwargs)
+
+
+class EnvironTestCase(TestServerTestCase):
+    "Tests that the API client reads settings from ENV."
+    def setUp(self):
+        super(EnvironTestCase, self).setUp()
+        os.environ['SMARTFILE_API_KEY'] = API_KEY
+        os.environ['SMARTFILE_API_PASSWORD'] = API_KEY
+
+    def tearDown(self):
+        super(EnvironTestCase, self).tearDown()
+        del os.environ['SMARTFILE_API_KEY']
+        del os.environ['SMARTFILE_API_PASSWORD']
+
+    def test_read_from_env(self):
+        # Blank out the credentials, the client should read them from the
+        # environment variables.
+        client = self.getClient(key=None, password=None)
+        client.ping.read()
+        self.server.assertMethod('GET')
+        self.server.assertPath('/api/2.0/ping')
 
 
 class UrlGenerationTestCase(TestServerTestCase):
@@ -118,6 +156,12 @@ class UrlGenerationTestCase(TestServerTestCase):
         client.access.user.read(42)
         self.server.assertMethod('GET')
         self.server.assertPath('/api/2.0/access/user/42')
+
+    def test_with_version(self):
+        client = self.getClient(version='3.1')
+        client.ping.read()
+        self.server.assertMethod('GET')
+        self.server.assertPath('/api/3.1/ping')
 
 
 class MethodTestCase(TestServerTestCase):

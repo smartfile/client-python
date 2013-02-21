@@ -50,13 +50,13 @@ class Endpoint(object):
     def create(self, **kwargs):
         self._request('post', data=kwargs)
 
-    def read(self, id, **kwargs):
+    def read(self, id=None, **kwargs):
         self._request('get', id=id, data=kwargs)
 
-    def update(self, id, **kwargs):
+    def update(self, id=None, **kwargs):
         self._request('post', id=id, data=kwargs)
 
-    def delete(self, id, **kwargs):
+    def delete(self, id=None, **kwargs):
         self._request('delete', id=id, data=kwargs)
 
 
