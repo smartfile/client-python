@@ -17,6 +17,8 @@ API_KEY = ''
 API_PASSWORD = ''
 CLIENT_TOKEN = ''
 CLIENT_SECRET = ''
+ACCESS_TOKEN = ''
+ACCESS_SECRET = ''
 
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -131,6 +133,8 @@ class OAuthTestCase(TestServerTestCase):
     def getClient(self, **kwargs):
         kwargs.setdefault('client_token', CLIENT_TOKEN)
         kwargs.setdefault('client_secret', CLIENT_SECRET)
+        kwargs.setdefault('access_token', ACCESS_TOKEN)
+        kwargs.setdefault('access_secret', ACCESS_SECRET)
         kwargs.setdefault('url', 'http://%s:%s/' % (
                           self.server.server_name, self.server.server_port))
         return OAuthClient(**kwargs)
@@ -207,11 +211,15 @@ class OAuthEnvironTestCase(OAuthTestCase):
         super(OAuthEnvironTestCase, self).setUp()
         os.environ['SMARTFILE_CLIENT_TOKEN'] = CLIENT_TOKEN
         os.environ['SMARTFILE_CLIENT_SECRET'] = CLIENT_SECRET
+        os.environ['SMARTFILE_ACCESS_TOKEN'] = ACCESS_TOKEN
+        os.environ['SMARTFILE_ACCESS_SECRET'] = ACCESS_SECRET
 
     def tearDown(self):
         super(OAuthEnvironTestCase, self).tearDown()
         del os.environ['SMARTFILE_CLIENT_TOKEN']
         del os.environ['SMARTFILE_CLIENT_SECRET']
+        del os.environ['SMARTFILE_ACCESS_TOKEN']
+        del os.environ['SMARTFILE_ACCESS_SECRET']
 
     def test_read_from_env(self):
         # Blank out the credentials, the client should read them from the
