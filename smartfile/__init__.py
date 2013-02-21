@@ -20,11 +20,12 @@ HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
 
 
 def is_valid_token(value):
+    "Validates a Basic or OAuth authentication token."
     if not value:
         return False
-    if len(value) != 32:
+    if len(value) != 30:
         return False
-    if not isinstance(unicode, value):
+    if not isinstance(value, unicode):
         return False
     return True
 
@@ -124,8 +125,12 @@ class BasicClient(Client):
     def __init__(self, key=None, password=None, **kwargs):
         if key is None:
             key = os.environ.get('SMARTFILE_API_KEY')
+        if not key is None:
+            key = unicode(key)
         if password is None:
             password = os.environ.get('SMARTFILE_API_PASSWORD')
+        if not password is None:
+            password = unicode(password)
         if not is_valid_token(key) or not is_valid_token(password):
             raise APIError('Please provide an API key and password. Use '
                            'arguments or environment variables.')

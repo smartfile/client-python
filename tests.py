@@ -13,12 +13,12 @@ from smartfile import BasicClient
 from smartfile import OAuthClient
 
 
-API_KEY = ''
-API_PASSWORD = ''
-CLIENT_TOKEN = ''
-CLIENT_SECRET = ''
-ACCESS_TOKEN = ''
-ACCESS_SECRET = ''
+API_KEY = '8g1aq1UF2QfZTG47yEVhVLAFqyfDdp'
+API_PASSWORD = '3II3UFD3pBAwy3Rbz8mVWBhJTA2Gvd'
+CLIENT_TOKEN = '8oWot4KrppJDzfokDsHNJrND0Ay13s'
+CLIENT_SECRET = '0I7BV6Bm3Rgfk73LL68vBp0u23KcKr'
+ACCESS_TOKEN = 'hIlkipZNmwIJ28HQtQRcbGuXBePQp5'
+ACCESS_SECRET = 'Scen1dwmVtWhjLpJfnilrfdc5OZWCJ'
 
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
