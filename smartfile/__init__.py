@@ -156,7 +156,7 @@ try:
             return (self.token, self.secret)[index]
 
         def is_valid(self):
-            if self.token is None or self.secret is None:
+            if not self.token or not self.secret:
                 return False
             return True
 
