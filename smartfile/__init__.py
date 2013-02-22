@@ -63,6 +63,9 @@ class Endpoint(object):
 #    def post(self, **kwargs):
 #        return self._request('post', data=kwargs)
 
+    def __call__(self, *args, **kwargs):
+        return self.get(*args, **kwargs)
+
     def get(self, id=None, **kwargs):
         return self._request('get', id=id, data=kwargs)
 
@@ -144,14 +147,20 @@ class BasicClient(Client):
         if password is None:
             password = os.environ.get('SMARTFILE_API_PASSWORD')
         if key is None or password is None:
-            rc = netrc(netrcfile)
-            urlp = urlparse.urlparse(self.url)
-            auth = rc.authenticators(urlp.netloc)
-            if not auth is None:
-                if key is None:
-                    key = auth[0]
-                if password is None:
-                    password = auth[2]
+            try:
+                rc = netrc(netrcfile)
+            except:
+                pass
+            else:
+                urlp = urlparse.urlparse(self.url)
+                auth = rc.authenticators(urlp.netloc)
+                if not auth is None:
+                    if key is None:
+                        key = auth[0]
+                    if key is None:
+                        key = auth[1]
+                    if password is None:
+                        password = auth[2]
         if not key is None:
             key = unicode(key)
         if not password is None:
