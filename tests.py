@@ -4,6 +4,7 @@ import os
 import filecmp
 import urlparse
 import unittest
+import tempfile
 import threading
 
 from BaseHTTPServer import HTTPServer
@@ -149,19 +150,19 @@ class UrlGenerationTestCase(object):
     "Tests that validate 'auto-generated' URLs."
     def test_with_path_id(self):
         client = self.getClient()
-        client.path.data.read('/the/file/path')
+        client.path.data.get('/the/file/path')
         self.assertMethod('GET')
         self.assertPath('/api/2.0/path/data/the/file/path/')
 
     def test_with_int_id(self):
         client = self.getClient()
-        client.access.user.read(42)
+        client.access.user.get(42)
         self.assertMethod('GET')
         self.assertPath('/api/2.0/access/user/42/')
 
     def test_with_version(self):
         client = self.getClient(version='3.1')
-        client.ping.read()
+        client.ping.get()
         self.assertMethod('GET')
         self.assertPath('/api/3.1/ping/')
 
@@ -170,17 +171,17 @@ class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_create_is_POST(self):
         client = self.getClient()
-        client.user.create(username='bobafett', email='bobafett@kamino.edu')
+        client.user.post(username='bobafett', email='bobafett@kamino.edu')
         self.assertMethod('POST')
 
     def test_read_is_GET(self):
         client = self.getClient()
-        client.user.read('bobafett')
+        client.user.get('bobafett')
         self.assertMethod('GET')
 
     def test_update_is_POST(self):
         client = self.getClient()
-        client.user.update('bobafett', full_name='Boba Fett')
+        client.user.post('bobafett', full_name='Boba Fett')
         self.assertMethod('POST')
 
     def test_delete_is_DELETE(self):
@@ -205,7 +206,7 @@ class BasicEnvironTestCase(BasicTestCase):
         # Blank out the credentials, the client should read them from the
         # environment variables.
         client = self.getClient(key=None, password=None)
-        client.ping.read()
+        client.ping.get()
         self.assertMethod('GET')
         self.assertPath('/api/2.0/ping/')
 
@@ -230,7 +231,7 @@ class OAuthEnvironTestCase(OAuthTestCase):
         # Blank out the credentials, the client should read them from the
         # environment variables.
         client = self.getClient(client_token=None, client_secret=None)
-        client.ping.read()
+        client.ping.get()
         self.assertMethod('GET')
         self.assertPath('/api/2.0/ping/')
 
@@ -239,6 +240,19 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
     def test_blank_credentials(self):
         self.assertRaises(APIError, self.getClient, key='', password='')
 
+    def test_netrc(self):
+        fd, t = tempfile.mkstemp()
+        try:
+            os.write(fd, "machine %s:%s\n  login %s\n  password %s" % (
+                self.server.server_address, self.server.server_port, API_KEY,
+                API_PASSWORD))
+        finally:
+            os.close(fd)
+        client = self.getClient(key=None, password=None, netrcfile=t)
+        client.ping.get()
+        self.assertMethod('GET')
+        self.assertPath('/api/2.0/ping/')
+
 
 class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
     def test_blank_client_token(self):
@@ -246,7 +260,7 @@ class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
 
     def test_blank_client_token(self):
         client = self.getClient(access_token='', access_secret='')
-        self.assertRaises(APIError, client.ping.read)
+        self.assertRaises(APIError, client.ping.get)
 
 
 class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
@@ -263,7 +277,7 @@ class ThrottleTestCase(object):
 
     def test_throttle_GET(self):
         client = self.getClient()
-        self.assertRaises(RequestError, client.ping.read)
+        self.assertRaises(RequestError, client.ping.get)
         self.assertRequestCount(3)
 
 

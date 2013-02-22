@@ -5,6 +5,8 @@ import time
 import urllib
 import urlparse
 
+from netrc import netrc
+
 from requests.exceptions import RequestException
 
 from smartfile.errors import APIError
@@ -58,13 +60,16 @@ class Endpoint(object):
         # fragments) and the optional ID.
         return obj._request(method, path, **kwargs)
 
-    def create(self, **kwargs):
-        return self._request('post', data=kwargs)
+#    def post(self, **kwargs):
+#        return self._request('post', data=kwargs)
 
-    def read(self, id=None, **kwargs):
+    def get(self, id=None, **kwargs):
         return self._request('get', id=id, data=kwargs)
 
-    def update(self, id=None, **kwargs):
+    def put(self, id=None, **kwargs):
+        return self._request('put', id=id, data=kwargs)
+
+    def post(self, id=None, **kwargs):
         return self._request('post', id=id, data=kwargs)
 
     def delete(self, id=None, **kwargs):
@@ -132,12 +137,23 @@ class BasicClient(Client):
     """API client that uses a key and password. Layers a simple form of
     authentication on the base Client."""
     def __init__(self, key=None, password=None, **kwargs):
+        netrcfile = kwargs.pop('netrcfile', None)
+        super(BasicClient, self).__init__(**kwargs)
         if key is None:
             key = os.environ.get('SMARTFILE_API_KEY')
-        if not key is None:
-            key = unicode(key)
         if password is None:
             password = os.environ.get('SMARTFILE_API_PASSWORD')
+        if key is None or password is None:
+            rc = netrc(netrcfile)
+            urlp = urlparse.urlparse(self.url)
+            auth = rc.authenticators(urlp.netloc)
+            if not auth is None:
+                if key is None:
+                    key = auth[0]
+                if password is None:
+                    password = auth[2]
+        if not key is None:
+            key = unicode(key)
         if not password is None:
             password = unicode(password)
         if not is_valid_token(key) or not is_valid_token(password):
@@ -145,7 +161,6 @@ class BasicClient(Client):
                            'arguments or environment variables.')
         self.key = key
         self.password = password
-        super(BasicClient, self).__init__(**kwargs)
 
     def _request(self, *args, **kwargs):
         # Add the token authentication

@@ -24,11 +24,12 @@ class ResponseError(APIError):
         try:
             json = response.json()
         except ValueError:
-            pass
-        else:
-            if not json or not 'detail' in json:
+            if self.status_code == 404:
+                self.detail = u'Invalid URL, check your API path'
+            else:
                 self.detail = u'Server error; check response for errors'
-            elif self.status_code == 400:
+        else:
+            if self.status_code == 400:
                 self.detail = json['field_errors']
             else:
                 self.detail = json['detail']
