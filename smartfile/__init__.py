@@ -101,13 +101,13 @@ class Client(Endpoint):
             if response.status_code >= 400:
                 raise ResponseError(response)
         # Try to return the response in the most useful fashion given it's type.
-        if response.headers['content-type'] == 'application/json':
+        if response.headers.get('content-type') == 'application/json':
             try:
                 # Try to decode as JSON
                 return response.json()
             except ValueError:
                 # If that fails, return the text.
-                return resonse.text
+                return response.text
         else:
             # This might be a file, so return it.
             return response.raw
@@ -142,7 +142,7 @@ class Client(Endpoint):
                 return self._do_request(request, url, **kwargs)
             except ResponseError, e:
                 if self.throttle_wait and e.status_code == 503:
-                    m = THROTTLE.match(e.response.headers['x-throttle'])
+                    m = THROTTLE.match(e.response.headers.get('x-throttle', ''))
                     if m:
                         time.sleep(float(m.group(1)))
                         continue

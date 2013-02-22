@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import json
 import urlparse
 import unittest
 import tempfile
@@ -199,6 +200,30 @@ class MethodTestCase(object):
         self.assertMethod('DELETE')
 
 
+class DownloadTestCase(object):
+    def test_file_response(self):
+        client = self.getClient()
+        r = client.user.get()
+        self.assertTrue(hasattr(r, 'read'), 'File-like object not returned.')
+        self.assertEqual(r.read(), 'Hello World!')
+
+
+class UploadTestCase(object):
+    def test_file_upload(self):
+        client = self.getClient()
+        fd, t = tempfile.mkstemp()
+        os.close(fd)
+        try:
+            client.user.post(file=file(t))
+        except Exception, e:
+            self.fail('POSTing a file failed. %s' % e)
+        finally:
+            try:
+                os.unlink(t)
+            except:
+                pass
+
+
 class BasicEnvironTestCase(BasicTestCase):
     "Tests that the API client reads settings from ENV."
     def setUp(self):
@@ -245,7 +270,8 @@ class OAuthEnvironTestCase(OAuthTestCase):
         self.assertPath('/api/{0}/ping/'.format(client.version))
 
 
-class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
+class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
+                          UrlGenerationTestCase, BasicTestCase):
     def test_blank_credentials(self):
         self.assertRaises(APIError, self.getClient, key='', password='')
 
@@ -274,7 +300,8 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
                 pass
 
 
-class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
+class OAuthClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
+                          UrlGenerationTestCase, OAuthTestCase):
     def test_blank_client_token(self):
         self.assertRaises(APIError, self.getClient, client_token='', client_secret='')
 
@@ -306,6 +333,33 @@ class BasicThrottleTestCase(ThrottleTestCase, BasicTestCase):
 
 
 class OAuthThrottleTestCase(ThrottleTestCase, OAuthTestCase):
+    pass
+
+
+class HTTPJSONRequestHandler(TestHTTPRequestHandler):
+    def respond(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({ 'foo': 'bar' }))
+
+
+class JSONTestCase(object):
+    def setUp(self):
+        self.server = TestHTTPServer(handler=HTTPJSONRequestHandler)
+
+    def test_throttle_GET(self):
+        client = self.getClient()
+        r = client.user.get()
+        self.assertMethod('GET')
+        self.assertEqual(r, { 'foo': 'bar' })
+
+
+class BasicJSONTestCase(JSONTestCase, BasicTestCase):
+    pass
+
+
+class OAuthJSONTestCase(JSONTestCase, OAuthTestCase):
     pass
 
 
