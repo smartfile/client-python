@@ -243,15 +243,25 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
     def test_netrc(self):
         fd, t = tempfile.mkstemp()
         try:
-            os.write(fd, "machine %s:%s\n  login %s\n  password %s" % (
-                self.server.server_address, self.server.server_port, API_KEY,
-                API_PASSWORD))
+            try:
+                address = self.server.server_address
+                if isinstance(address, tuple):
+                    address, port = address
+                else:
+                    port = self.server.server_port
+                os.write(fd, "machine %s:%s\n  login %s\n  password %s" % (
+                    address, port, API_KEY, API_PASSWORD))
+            finally:
+                os.close(fd)
+            client = self.getClient(key=None, password=None, netrcfile=t)
+            client.ping.get()
+            self.assertMethod('GET')
+            self.assertPath('/api/2.0/ping/')
         finally:
-            os.close(fd)
-        client = self.getClient(key=None, password=None, netrcfile=t)
-        client.ping.get()
-        self.assertMethod('GET')
-        self.assertPath('/api/2.0/ping/')
+            try:
+                os.unlink(t)
+            except:
+                pass
 
 
 class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
