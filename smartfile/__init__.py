@@ -94,16 +94,23 @@ class Client(Endpoint):
         "Actually makes the HTTP request."
         kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
         try:
-            response = request(url, **kwargs)
+            response = request(url, stream=True, **kwargs)
         except RequestException, e:
             raise RequestError(e)
         else:
             if response.status_code >= 400:
                 raise ResponseError(response)
-        try:
-            return response.json()
-        except ValueError:
-            pass
+        # Try to return the response in the most useful fashion given it's type.
+        if response.headers['content-type'] == 'application/json':
+            try:
+                # Try to decode as JSON
+                return response.json()
+            except ValueError:
+                # If that fails, return the text.
+                return resonse.text
+        else:
+            # This might be a file, so return it.
+            return response.raw
 
     def _request(self, method, path, **kwargs):
         "Handles retrying failed requests and error handling."
