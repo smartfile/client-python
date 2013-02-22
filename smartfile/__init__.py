@@ -51,7 +51,7 @@ class Endpoint(object):
             # Insert each "name" from the stack into our path. This will
             # preserve their order (insert vs. append).
             path.insert(0, obj.name)
-            # grab the next item on the stack, then interate.
+            # grab the next item on the stack, then iterate.
             obj = obj.parent
         # If we received an ID, append it to the path.
         if id:

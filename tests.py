@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import filecmp
 import urlparse
 import unittest
 import tempfile
@@ -153,26 +152,27 @@ class UrlGenerationTestCase(object):
         client = self.getClient()
         client.path.data.get('/the/file/path')
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/path/data/the/file/path/')
+        self.assertPath('/api/{0}/path/data/the/file/path/'.format(
+            client.version))
 
     def test_with_int_id(self):
         client = self.getClient()
         client.access.user.get(42)
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/access/user/42/')
+        self.assertPath('/api/{0}/access/user/42/'.format(client.version))
 
     def test_with_version(self):
         client = self.getClient(version='3.1')
         client.ping.get()
         self.assertMethod('GET')
-        self.assertPath('/api/3.1/ping/')
+        self.assertPath('/api/{0}/ping/'.format(client.version))
 
 
 class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_create_is_POST(self):
         client = self.getClient()
-        client.user.post(username='bobafett', email='bobafett@kamino.edu')
+        client.user.post(username='bobafett', email='bobafett@example.com')
         self.assertMethod('POST')
 
     def test_read_is_GET(self):
@@ -209,7 +209,7 @@ class BasicEnvironTestCase(BasicTestCase):
         client = self.getClient(key=None, password=None)
         client.ping.get()
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/ping/')
+        self.assertPath('/api/{0}/ping/'.format(client.version))
 
 
 class OAuthEnvironTestCase(OAuthTestCase):
@@ -234,7 +234,7 @@ class OAuthEnvironTestCase(OAuthTestCase):
         client = self.getClient(client_token=None, client_secret=None)
         client.ping.get()
         self.assertMethod('GET')
-        self.assertPath('/api/2.0/ping/')
+        self.assertPath('/api/{0}/ping/'.format(client.version))
 
 
 class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
@@ -258,7 +258,7 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
             client = self.getClient(key=None, password=None, netrcfile=t)
             client.ping.get()
             self.assertMethod('GET')
-            self.assertPath('/api/2.0/ping/')
+            self.assertPath('/api/{0}/ping/'.format(client.version))
         finally:
             try:
                 os.unlink(t)
