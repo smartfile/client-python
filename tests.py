@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import filecmp
 import urlparse
 import unittest
 import tempfile
