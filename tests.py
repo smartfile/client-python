@@ -245,6 +245,7 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
         try:
             try:
                 address = self.server.server_address
+                print address
                 if isinstance(address, tuple):
                     address, port = address
                 else:
