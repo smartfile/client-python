@@ -250,8 +250,8 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
                     address, port = address
                 else:
                     port = self.server.server_port
-                netrc = "machine %s:%s\n  login %s\n  password %s" % (
-                        address, port, API_KEY, API_PASSWORD)
+                netrc = "machine 127.0.0.1:%s\n  login %s\n  password %s" % (
+                        port, API_KEY, API_PASSWORD)
                 os.write(fd, netrc)
             finally:
                 os.close(fd)
