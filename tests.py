@@ -270,7 +270,7 @@ class OAuthClientTestCase(MethodTestCase, UrlGenerationTestCase, OAuthTestCase):
     def test_blank_client_token(self):
         self.assertRaises(APIError, self.getClient, client_token='', client_secret='')
 
-    def test_blank_client_token(self):
+    def test_blank_access_token(self):
         client = self.getClient(access_token='', access_secret='')
         self.assertRaises(APIError, client.ping.get)
 
