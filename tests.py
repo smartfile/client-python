@@ -64,6 +64,9 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.parse_and_record('GET')
 
+    def do_PUT(self):
+        self.parse_and_record('PUT')
+
     def do_POST(self):
         self.parse_and_record('POST')
 
@@ -170,20 +173,25 @@ class UrlGenerationTestCase(object):
 
 class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
-    def test_create_is_POST(self):
+    def test_call_is_GET(self):
+        client = self.getClient()
+        client.user('bobafett')
+        self.assertMethod('GET')
+
+    def test_post_is_POST(self):
         client = self.getClient()
         client.user.post(username='bobafett', email='bobafett@example.com')
         self.assertMethod('POST')
 
-    def test_read_is_GET(self):
+    def test_get_is_GET(self):
         client = self.getClient()
         client.user.get('bobafett')
         self.assertMethod('GET')
 
-    def test_update_is_POST(self):
+    def test_put_is_PUT(self):
         client = self.getClient()
-        client.user.post('bobafett', full_name='Boba Fett')
-        self.assertMethod('POST')
+        client.user.put('bobafett', full_name='Boba Fett')
+        self.assertMethod('PUT')
 
     def test_delete_is_DELETE(self):
         client = self.getClient()
