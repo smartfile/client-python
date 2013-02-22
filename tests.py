@@ -172,7 +172,7 @@ class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_create_is_POST(self):
         client = self.getClient()
-        client.user.post(username='bobafett', email='bobafett@kamino.edu')
+        client.user.post(username='bobafett', email='bobafett@example.com')
         self.assertMethod('POST')
 
     def test_read_is_GET(self):
