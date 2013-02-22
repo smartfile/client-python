@@ -110,6 +110,13 @@ class Client(Endpoint):
         request = getattr(requests, method, None)
         if not callable(request):
             raise RequestError('Invalid method %s' % method)
+        # Find files, separate them out to correct kwarg for requests.
+        data, files = kwargs.get('data'), {}
+        for name, value in data.items():
+            if hasattr(value, 'read'):
+                files[name] = data.pop(name)
+        if files:
+            kwargs.setdefault('files', {}).update(files)
         # Join fragments into a URL
         path = ['api', self.version] + path
         path = '/'.join(path)
