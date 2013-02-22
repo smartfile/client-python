@@ -29,7 +29,7 @@ class ResponseError(APIError):
             else:
                 self.detail = u'Server error; check response for errors'
         else:
-            if self.status_code == 400:
+            if self.status_code == 400 and 'field_errors' in json:
                 self.detail = json['field_errors']
             else:
                 self.detail = json['detail']
