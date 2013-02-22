@@ -89,6 +89,7 @@ class TestHTTPServer(threading.Thread, HTTPServer):
     def run(self):
         self.serve_forever()
 
+
 class TestServerTestCase(unittest.TestCase):
     """
     Test case that starts our test HTTP server.
@@ -130,8 +131,8 @@ class BasicTestCase(TestServerTestCase):
     def getClient(self, **kwargs):
         kwargs.setdefault('key', API_KEY)
         kwargs.setdefault('password', API_PASSWORD)
-        kwargs.setdefault('url', 'http://%s:%s/' % (
-                          self.server.server_name, self.server.server_port))
+        kwargs.setdefault('url', 'http://127.0.0.1:%s/' %
+                          self.server.server_port)
         return BasicClient(**kwargs)
 
 
@@ -141,8 +142,8 @@ class OAuthTestCase(TestServerTestCase):
         kwargs.setdefault('client_secret', CLIENT_SECRET)
         kwargs.setdefault('access_token', ACCESS_TOKEN)
         kwargs.setdefault('access_secret', ACCESS_SECRET)
-        kwargs.setdefault('url', 'http://%s:%s/' % (
-                          self.server.server_name, self.server.server_port))
+        kwargs.setdefault('url', 'http://127.0.0.1:%s/' %
+                          self.server.server_port)
         return OAuthClient(**kwargs)
 
 
@@ -245,13 +246,13 @@ class BasicClientTestCase(MethodTestCase, UrlGenerationTestCase, BasicTestCase):
         try:
             try:
                 address = self.server.server_address
-                print address
                 if isinstance(address, tuple):
                     address, port = address
                 else:
                     port = self.server.server_port
-                os.write(fd, "machine %s:%s\n  login %s\n  password %s" % (
-                    address, port, API_KEY, API_PASSWORD))
+                netrc = "machine %s:%s\n  login %s\n  password %s" % (
+                        address, port, API_KEY, API_PASSWORD)
+                os.write(fd, netrc)
             finally:
                 os.close(fd)
             client = self.getClient(key=None, password=None, netrcfile=t)
