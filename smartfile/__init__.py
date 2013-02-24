@@ -263,19 +263,32 @@ try:
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
-            return OAuthToken(credentials.get('oauth_token')[0],
-                              credentials.get('oauth_token_secret')[0])
+            self.__request = OAuthToken(credentials.get('oauth_token')[0],
+                                        credentials.get('oauth_token_secret')[0])
+            return self.__request
 
-        def get_authorization_url(self, request):
+        def get_authorization_url(self, request=None):
             "The second step of the OAuth workflow."
+            if request is None:
+                if not self.__request.is_valid():
+                    raise APIError('You must obtain a request token to request '
+                                   'and access token. Use get_request_token() '
+                                   'first.')
+                request = self.__request
             url = urlparse.urljoin(self.url, 'oauth/authorize/')
             return url + '?' + urllib.urlencode(dict(oauth_token=request.token))
 
-        def get_access_token(self, request, verifier=None):
+        def get_access_token(self, request=None, verifier=None):
             """The final step of the OAuth workflow. After this the client can make
             API calls."""
             if verifier:
                 verifier = unicode(verifier)
+            if request is None:
+                if not self.__request.is_valid():
+                    raise APIError('You must obtain a request token to request '
+                                   'and access token. Use get_request_token() '
+                                   'first.')
+                request = self.__request
             oauth = OAuth1(self.__client.token,
                            client_secret=self.__client.secret,
                            resource_owner_key=request.token,
@@ -284,8 +297,9 @@ try:
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
-            self.access = OAuthToken(credentials.get('oauth_token')[0],
+            self.__access = OAuthToken(credentials.get('oauth_token')[0],
                                      credentials.get('oauth_token_secret')[0])
+            return self.__access
 
 
 except ImportError:
