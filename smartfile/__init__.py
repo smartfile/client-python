@@ -300,7 +300,7 @@ try:
             r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
             self.__access = OAuthToken(credentials.get('oauth_token')[0],
-                                     credentials.get('oauth_token_secret')[0])
+                                       credentials.get('oauth_token_secret')[0])
             return self.__access
 
 
