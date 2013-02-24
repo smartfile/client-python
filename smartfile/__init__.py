@@ -15,7 +15,7 @@ from smartfile.errors import ResponseError
 
 
 API_URL = 'https://app.smartfile.com/'
-API_VER = '2.0'
+API_VER = '2.1'
 
 THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
@@ -67,7 +67,7 @@ class Endpoint(object):
         return self.get(*args, **kwargs)
 
     def get(self, id=None, **kwargs):
-        return self._request('get', id=id, data=kwargs)
+        return self._request('get', id=id, params=kwargs)
 
     def put(self, id=None, **kwargs):
         return self._request('put', id=id, data=kwargs)
@@ -118,12 +118,14 @@ class Client(Endpoint):
         if not callable(request):
             raise RequestError('Invalid method %s' % method)
         # Find files, separate them out to correct kwarg for requests.
-        data, files = kwargs.get('data'), {}
-        for name, value in data.items():
-            if hasattr(value, 'read'):
-                files[name] = data.pop(name)
-        if files:
-            kwargs.setdefault('files', {}).update(files)
+        data = kwargs.get('data')
+        if data:
+            files = {}
+            for name, value in data.items():
+                if hasattr(value, 'read'):
+                    files[name] = data.pop(name)
+            if files:
+                kwargs.setdefault('files', {}).update(files)
         # Join fragments into a URL
         path = ['api', self.version] + path
         path = '/'.join(path)
