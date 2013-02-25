@@ -69,11 +69,11 @@ Three methods are supported for providing API credentials.
 
 3. Parameters when instantiating the client.
 
-.. code:: python
+   .. code:: python
 
-    >>> from smartfile import BasicClient
-    >>> api = BasicClient('**********', '**********')
-    >>> api.get('/ping')
+       >>> from smartfile import BasicClient
+       >>> api = BasicClient('**********', '**********')
+       >>> api.get('/ping')
 
 Once you instantiate a client, you can use the get/put/post/delete methods
 to make the corresponding HTTP requests to the API. There is also a shortcut
