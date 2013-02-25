@@ -14,8 +14,10 @@ from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
 
 
+__version__ = '2.1'
+
+
 API_URL = 'https://app.smartfile.com/'
-API_VER = '2.1'
 
 THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
 HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
@@ -81,7 +83,7 @@ class Endpoint(object):
 
 class Client(Endpoint):
     """Base API client, handles communication, retry, versioning etc."""
-    def __init__(self, url=None, version=API_VER, throttle_wait=True):
+    def __init__(self, url=None, version=__version__, throttle_wait=True):
         if url is None:
             url = os.environ.get('SMARTFILE_API_URL')
         if url is None:

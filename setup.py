@@ -3,10 +3,11 @@
 import os
 from distutils.core import setup
 
+from smartfile import __version__
+
 name = 'smartfile'
-version = '1.0'
 release = '1'
-versrel = version + '-' + release
+versrel = __version__ + '-' + release
 readme = os.path.join(os.path.dirname(__file__), 'README.rst')
 long_description = file(readme).read()
 
