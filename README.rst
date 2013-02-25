@@ -16,7 +16,7 @@ Introduction
 
 This library includes two API clients. Each one represents one of the supported
 authentication methods. :code:`BasicClient` is used for HTTP Basic authentication,
-using an API key and password. OAuthClient is used for OAuth authentication,
+using an API key and password. :code:`OAuthClient` is used for OAuth authentication,
 using tokens.
 
 Both clients provide a thin wrapper around an HTTP library, taking care of some
@@ -57,7 +57,7 @@ Three methods are supported for providing API credentials.
 
 2. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
-   `~/.netrc`
+   :code:`~/.netrc`:
 
    ::
 
@@ -97,7 +97,7 @@ for using the GET method, which is to simply invoke the client.
 
 Some endpoints accept an ID, this might be a numeric value, a path, or name,
 depending on the object type. For example, a user's id is their unique
-`username`. For a file path, the id is it's full path.
+:code:`username`. For a file path, the id is it's full path.
 
 .. code:: python
 
@@ -127,8 +127,8 @@ File transfers
 
 Uploading and downloading files is supported.
 
-To upload a file, pass either a file-like object or a tuple of (filename,
-file-like) as a kwarg.
+To upload a file, pass either a file-like object or a tuple of
+:code:`(filename, file-like)` as a kwarg.
 
 .. code:: python
 
@@ -140,8 +140,9 @@ file-like) as a kwarg.
     >>> # Or use a file-like object with a name attribute
     >>> api.post('/path/data/', file=file('foobar.png', 'rb'))
 
-Downloading is automatic, if the Content-Type header indicates content other
-than the expected JSON return value, then a file-like object is returned.
+Downloading is automatic, if the :code:`'Content-Type'` header indicates
+content other than the expected JSON return value, then a file-like object is
+returned.
 
 .. code:: python
 
