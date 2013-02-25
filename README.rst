@@ -55,8 +55,7 @@ Three methods are supported for providing API credentials.
        >>> api = BasicClient()
        >>> api.get('/ping')
 
-2. `netrc
-<http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
+2. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
    ::
 
