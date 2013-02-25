@@ -8,13 +8,11 @@ uses and contributes to Open Source software.
 .. figure:: http://www.smartfile.com/images/logo.jpg
    :alt: SmartFile
 
+SmartFile API client
+====================
+
 Introduction
 ------------
-
-SmartFile API client.
-
-Usage
------
 
 This library includes two API clients. Each one represents one of the supported
 authentication methods. `BasicClient` is used for HTTP Basic authentication,
@@ -26,6 +24,9 @@ of the mundane details for you. The intended use of this library is to refer to
 the API documentation to discover the API endpoint you wish to call, then use
 the client library to invoke this call.
 
+Usage
+-----
+
 Some of the details this library takes care of are.
 
 * Encoding and decoding of parameters and return values. You deal with Python
@@ -35,37 +36,40 @@ Some of the details this library takes care of are.
 * Authentication. Provide the credentials that you obtained from SmartFile,
   and plug them into this library. It will take care of the details.
 
+Authentication
+--------------
+
 Three methods are supported for providing API credentials.
 
 1. Environment variables.
 
-::
+   ::
 
-    $ export SMARTFILE_API_KEY=**********
-    $ export SMARTFILE_API_PASSWORD=**********
+       $ export SMARTFILE_API_KEY=**********
+       $ export SMARTFILE_API_PASSWORD=**********
 
-.. code:: python
+   .. code:: python
 
-    >>> from smartfile import BasicClient
-    >>> # Credentials are read automatically from environment
-    >>> api = BasicClient()
-    >>> api.get('/ping')
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from environment
+       >>> api = BasicClient()
+       >>> api.get('/ping')
 
 2. `netrc
 <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
-::
+   ::
 
-    machine app.smartfile.com
-      login **********
-      password **********
+       machine app.smartfile.com
+         login **********
+         password **********
 
-.. code:: python
+   .. code:: python
 
-    >>> from smartfile import BasicClient
-    >>> # Credentials are read automatically from netrc
-    >>> api = BasicClient()
-    >>> api.get('/ping')
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from netrc
+       >>> api = BasicClient()
+       >>> api.get('/ping')
 
 3. Parameters when instantiating the client.
 
@@ -74,6 +78,9 @@ Three methods are supported for providing API credentials.
        >>> from smartfile import BasicClient
        >>> api = BasicClient('**********', '**********')
        >>> api.get('/ping')
+
+Calling endpoints
+-----------------
 
 Once you instantiate a client, you can use the get/put/post/delete methods
 to make the corresponding HTTP requests to the API. There is also a shortcut
@@ -113,6 +120,9 @@ depending on the object type. For example, a user's id is their unique
      u'tags': [],
      u'time': u'2013-02-23T22:49:30',
      u'url': u'http://localhost:8000/api/2/path/info/'}
+
+File transfers
+--------------
 
 Uploading and downloading files is supported.
 
