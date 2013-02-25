@@ -60,8 +60,6 @@ Three methods are supported for providing API credentials.
    ::
 
        machine app.smartfile.com
-         login **********
-         password **********
 
    .. code:: python
 
