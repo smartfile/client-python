@@ -16,7 +16,6 @@ from smartfile.errors import ResponseError
 
 __version__ = '2.1'
 
-
 API_URL = 'https://app.smartfile.com/'
 
 THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
@@ -34,54 +33,7 @@ def is_valid_token(value):
     return True
 
 
-class Endpoint(object):
-    """A placeholder that remembers the namespace the user accesses."""
-    def __init__(self, parent, name):
-        self.parent = parent
-        self.name = name
-
-    def __getattr__(self, name):
-        return Endpoint(self, name)
-
-    def _request(self, method, id=None, **kwargs):
-        """Assembles the path, locates the API client on the endpoint stack,
-        and asks it to make the API call."""
-        path, obj = [], self
-        # Walk down the stack until we encounter the Client instance, this is
-        # located at the bottom.
-        while not isinstance(obj, Client):
-            # Insert each "name" from the stack into our path. This will
-            # preserve their order (insert vs. append).
-            path.insert(0, obj.name)
-            # grab the next item on the stack, then iterate.
-            obj = obj.parent
-        # If we received an ID, append it to the path.
-        if id:
-            path.append(str(id))
-        # obj is now our API client. path contains all the names (url
-        # fragments) and the optional ID.
-        return obj._request(method, path, **kwargs)
-
-#    def post(self, **kwargs):
-#        return self._request('post', data=kwargs)
-
-    def __call__(self, *args, **kwargs):
-        return self.get(*args, **kwargs)
-
-    def get(self, id=None, **kwargs):
-        return self._request('get', id=id, params=kwargs)
-
-    def put(self, id=None, **kwargs):
-        return self._request('put', id=id, data=kwargs)
-
-    def post(self, id=None, **kwargs):
-        return self._request('post', id=id, data=kwargs)
-
-    def delete(self, id=None, **kwargs):
-        return self._request('delete', id=id, data=kwargs)
-
-
-class Client(Endpoint):
+class Client(object):
     """Base API client, handles communication, retry, versioning etc."""
     def __init__(self, url=None, version=__version__, throttle_wait=True):
         if url is None:
@@ -114,7 +66,7 @@ class Client(Endpoint):
             # This might be a file, so return it.
             return response.raw
 
-    def _request(self, method, path, **kwargs):
+    def _request(self, method, endpoint, id=None, **kwargs):
         "Handles retrying failed requests and error handling."
         request = getattr(requests, method, None)
         if not callable(request):
@@ -130,8 +82,11 @@ class Client(Endpoint):
                     files[name] = data.pop(name)
             if files:
                 kwargs.setdefault('files', {}).update(files)
+        path = ['api', self.version, endpoint]
+        # If we received an ID, append it to the path.
+        if id:
+            path.append(str(id))
         # Join fragments into a URL
-        path = ['api', self.version] + path
         path = '/'.join(path)
         if not path.endswith('/'):
             path += '/'
@@ -154,6 +109,21 @@ class Client(Endpoint):
                         continue
                 # Failed for a reason other than throttling.
                 raise
+
+    def __call__(self, *args, **kwargs):
+        return self.get(*args, **kwargs)
+
+    def get(self, endpoint, id=None, **kwargs):
+        return self._request('get', endpoint, id=id, params=kwargs)
+
+    def put(self, endpoint, id=None, **kwargs):
+        return self._request('put', endpoint, id=id, data=kwargs)
+
+    def post(self, endpoint, id=None, **kwargs):
+        return self._request('post', endpoint, id=id, data=kwargs)
+
+    def delete(self, endpoint, id=None, **kwargs):
+        return self._request('delete', endpoint, id=id, data=kwargs)
 
 
 class BasicClient(Client):

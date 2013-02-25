@@ -154,20 +154,20 @@ class UrlGenerationTestCase(object):
     "Tests that validate 'auto-generated' URLs."
     def test_with_path_id(self):
         client = self.getClient()
-        client.path.data.get('/the/file/path')
+        client.get('/path/data', '/the/file/path')
         self.assertMethod('GET')
         self.assertPath('/api/{0}/path/data/the/file/path/'.format(
             client.version))
 
     def test_with_int_id(self):
         client = self.getClient()
-        client.access.user.get(42)
+        client.get('/access/user', 42)
         self.assertMethod('GET')
         self.assertPath('/api/{0}/access/user/42/'.format(client.version))
 
     def test_with_version(self):
         client = self.getClient(version='3.1')
-        client.ping.get()
+        client.get('/ping')
         self.assertMethod('GET')
         self.assertPath('/api/{0}/ping/'.format(client.version))
 
@@ -176,34 +176,34 @@ class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_call_is_GET(self):
         client = self.getClient()
-        client.user('bobafett')
+        client('/user', 'bobafett')
         self.assertMethod('GET')
 
     def test_post_is_POST(self):
         client = self.getClient()
-        client.user.post(username='bobafett', email='bobafett@example.com')
+        client.post('/user', username='bobafett', email='bobafett@example.com')
         self.assertMethod('POST')
 
     def test_get_is_GET(self):
         client = self.getClient()
-        client.user.get('bobafett')
+        client.get('/user', 'bobafett')
         self.assertMethod('GET')
 
     def test_put_is_PUT(self):
         client = self.getClient()
-        client.user.put('bobafett', full_name='Boba Fett')
+        client.put('/user', 'bobafett', full_name='Boba Fett')
         self.assertMethod('PUT')
 
     def test_delete_is_DELETE(self):
         client = self.getClient()
-        client.user.delete('bobafett')
+        client.delete('/user', 'bobafett')
         self.assertMethod('DELETE')
 
 
 class DownloadTestCase(object):
     def test_file_response(self):
         client = self.getClient()
-        r = client.user.get()
+        r = client.get('/user')
         self.assertTrue(hasattr(r, 'read'), 'File-like object not returned.')
         self.assertEqual(r.read(), 'Hello World!')
 
@@ -214,7 +214,7 @@ class UploadTestCase(object):
         fd, t = tempfile.mkstemp()
         os.close(fd)
         try:
-            client.user.post(file=file(t))
+            client.post('/path/data', 'foobar.png', file=file(t))
         except Exception, e:
             self.fail('POSTing a file failed. %s' % e)
         finally:
@@ -240,7 +240,7 @@ class BasicEnvironTestCase(BasicTestCase):
         # Blank out the credentials, the client should read them from the
         # environment variables.
         client = self.getClient(key=None, password=None)
-        client.ping.get()
+        client.get('/ping')
         self.assertMethod('GET')
         self.assertPath('/api/{0}/ping/'.format(client.version))
 
@@ -265,7 +265,7 @@ class OAuthEnvironTestCase(OAuthTestCase):
         # Blank out the credentials, the client should read them from the
         # environment variables.
         client = self.getClient(client_token=None, client_secret=None)
-        client.ping.get()
+        client.get('/ping')
         self.assertMethod('GET')
         self.assertPath('/api/{0}/ping/'.format(client.version))
 
@@ -290,7 +290,7 @@ class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
             finally:
                 os.close(fd)
             client = self.getClient(key=None, password=None, netrcfile=t)
-            client.ping.get()
+            client.get('/ping')
             self.assertMethod('GET')
             self.assertPath('/api/{0}/ping/'.format(client.version))
         finally:
@@ -307,7 +307,7 @@ class OAuthClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
 
     def test_blank_access_token(self):
         client = self.getClient(access_token='', access_secret='')
-        self.assertRaises(APIError, client.ping.get)
+        self.assertRaises(APIError, client.get, '/ping')
 
 
 class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
@@ -324,7 +324,7 @@ class ThrottleTestCase(object):
 
     def test_throttle_GET(self):
         client = self.getClient()
-        self.assertRaises(RequestError, client.ping.get)
+        self.assertRaises(RequestError, client.get, '/ping')
         self.assertRequestCount(3)
 
 
@@ -350,7 +350,7 @@ class JSONTestCase(object):
 
     def test_throttle_GET(self):
         client = self.getClient()
-        r = client.user.get()
+        r = client.get('/user')
         self.assertMethod('GET')
         self.assertEqual(r, { 'foo': 'bar' })
 
