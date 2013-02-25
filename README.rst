@@ -44,8 +44,7 @@ Three methods are supported for providing API credentials.
     $ export SMARTFILE_API_KEY=**********
     $ export SMARTFILE_API_PASSWORD=**********
 
-
-:: code:: python
+.. code:: python
 
     >>> from smartfile import BasicClient
     >>> # Credentials are read automatically from environment
@@ -60,7 +59,7 @@ Three methods are supported for providing API credentials.
       login **********
       password **********
 
-:: code:: python
+.. code:: python
 
     >>> from smartfile import BasicClient
     >>> # Credentials are read automatically from netrc
@@ -69,7 +68,7 @@ Three methods are supported for providing API credentials.
 
 3. Parameters when instantiating the client.
 
-:: code:: python
+.. code:: python
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient('**********', '**********')
@@ -131,6 +130,8 @@ file-like) as a kwarg.
 
 Downloading is automatic, if the Content-Type header indicates content other
 than the expected JSON return value, then a file-like object is returned.
+
+.. code:: python
 
     >>> import shutil
     >>> from smartfile import BasicClient
