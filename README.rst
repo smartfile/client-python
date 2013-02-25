@@ -15,7 +15,7 @@ Introduction
 ------------
 
 This library includes two API clients. Each one represents one of the supported
-authentication methods. `BasicClient` is used for HTTP Basic authentication,
+authentication methods. :code:`BasicClient` is used for HTTP Basic authentication,
 using an API key and password. OAuthClient is used for OAuth authentication,
 using tokens.
 
@@ -57,9 +57,13 @@ Three methods are supported for providing API credentials.
 
 2. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
+   `~/.netrc`
+
    ::
 
        machine app.smartfile.com
+         login **********
+         password **********
 
    .. code:: python
 
