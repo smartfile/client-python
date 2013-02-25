@@ -122,7 +122,9 @@ class Client(Endpoint):
         if data:
             files = {}
             for name, value in data.items():
-                if hasattr(value, 'read'):
+                # Value might be a file-like object (with a read method), or it
+                # might be a (filename, file-like) tuple.
+                if hasattr(value, 'read') or isinstance(value, tuple):
                     files[name] = data.pop(name)
             if files:
                 kwargs.setdefault('files', {}).update(files)
