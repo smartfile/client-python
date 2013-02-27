@@ -21,9 +21,8 @@ of the mundane details for you. The intended use of this library is to refer to
 the API documentation to discover the API endpoint you wish to call, then use
 the client library to invoke this call.
 
-SmartFile API information is available at our developer site.
-
-https://app.smartfile.com/api/
+SmartFile API information is available at the
+`SmartFile developer site <https://app.smartfile.com/api/>`_.
 
 Installation
 ------------
