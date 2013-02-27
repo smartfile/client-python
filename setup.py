@@ -4,10 +4,15 @@ import os
 import re
 from distutils.core import setup
 
-VERSION_PATTERN = re.compile(r'__version__\W*\=\W*["\'](.*)["\']')
+VERSION_PATTERN = re.compile(r'^[^#]*__version__\W*\=\W*["\'](.*)["\']')
 VERSION = None
 
-with file('smartfile/__init__.py') as f:
+
+def get_path(path):
+    return os.path.join(os.path.dirname(__file__), path)
+
+
+with file(get_path('smartfile/__init__.py')) as f:
     for line in f.xreadlines():
         m = VERSION_PATTERN.search(line)
         if m:
@@ -22,8 +27,7 @@ if VERSION is None:
 name = 'smartfile'
 release = '1'
 versrel = VERSION + '-' + release
-readme = os.path.join(os.path.dirname(__file__), 'README.rst')
-long_description = file(readme).read()
+long_description = file(get_path('README.rst')).read()
 
 setup(
     name=name,
