@@ -1,9 +1,10 @@
 import re
 import os
-import requests
 import time
+import string
 import urllib
 import urlparse
+import requests
 
 from netrc import netrc
 
@@ -12,41 +13,35 @@ from requests.exceptions import RequestException
 from smartfile.errors import APIError
 from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
+from smartfile.__version__ import __version__
 
-
-__version__ = '2.1'
 
 API_URL = 'https://app.smartfile.com/'
 
-THROTTLE = re.compile('^.*; next=([\d\.]+) sec$')
-HTTP_USER_AGENT = 'SmartFile Python API client v1.0'
+THROTTLE_PATTERN = re.compile('^.*; next=([\d\.]+) sec$')
+HTTP_USER_AGENT = 'SmartFile Python API client v{0}'.format(__version__)
 
 
-def is_valid_token(value):
-    "Validates a Basic or OAuth authentication token."
-    if not value:
-        return False
-    if len(value) != 30:
-        return False
-    if not isinstance(value, unicode):
-        return False
-    return True
+def clean_tokens(*args):
+    args = map(string.strip, args)
+    for i, arg in enumerate(args):
+        if len(arg) < 30:
+            raise ValueError("Too short")
+        if not isinstance(arg, unicode):
+            arg = unicode(arg)
+        args[i] = arg
+    return args
 
 
 class Client(object):
     """Base API client, handles communication, retry, versioning etc."""
     def __init__(self, url=None, version=__version__, throttle_wait=True):
-        if url is None:
-            url = os.environ.get('SMARTFILE_API_URL')
-        if url is None:
-            url = API_URL
-        self.url = url
+        self.url = url or os.environ.get('SMARTFILE_API_URL') or API_URL
         self.version = version
         self.throttle_wait = throttle_wait
 
     def _do_request(self, request, url, **kwargs):
         "Actually makes the HTTP request."
-        kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
         try:
             response = request(url, stream=True, **kwargs)
         except RequestException, e:
@@ -93,6 +88,8 @@ class Client(object):
         while '//' in path:
             path = path.replace('//', '/')
         url = self.url + path
+        # Add our user agent.
+        kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
         # Now try the request, if we get throttled, sleep and try again.
         trys, retrys = 0, 3
         while True:
@@ -103,7 +100,7 @@ class Client(object):
                 return self._do_request(request, url, **kwargs)
             except ResponseError, e:
                 if self.throttle_wait and e.status_code == 503:
-                    m = THROTTLE.match(e.response.headers.get('x-throttle', ''))
+                    m = THROTTLE_PATTERN.match(e.response.headers.get('x-throttle', ''))
                     if m:
                         time.sleep(float(m.group(1)))
                         continue
@@ -144,27 +141,23 @@ class BasicClient(Client):
             else:
                 urlp = urlparse.urlparse(self.url)
                 auth = rc.authenticators(urlp.netloc)
-                if not auth is None:
+                if auth is not None:
                     if key is None:
                         key = auth[0]
                     if key is None:
                         key = auth[1]
                     if password is None:
                         password = auth[2]
-        if not key is None:
-            key = unicode(key)
-        if not password is None:
-            password = unicode(password)
-        if not is_valid_token(key) or not is_valid_token(password):
+        try:
+            self.key, self.password = clean_tokens(key, password)
+        except ValueError:
             raise APIError('Please provide an API key and password. Use '
                            'arguments or environment variables.')
-        self.key = key
-        self.password = password
 
-    def _request(self, *args, **kwargs):
+    def _do_request(self, *args, **kwargs):
         # Add the token authentication
         kwargs['auth'] = (self.key, self.password)
-        return super(BasicClient, self)._request(*args, **kwargs)
+        return super(BasicClient, self)._do_request(*args, **kwargs)
 
 
 try:
@@ -178,12 +171,8 @@ try:
     class OAuthToken(object):
         "Internal representation of an OAuth (token, secret) tuple."
         def __init__(self, token=None, secret=None):
-            if not token is None:
-                token = unicode(token)
-            self.token = token
-            if not secret is None:
-                secret = unicode(secret)
-            self.secret = secret
+            self.token = token and unicode(token)
+            self.secret = secret and unicode(secret)
 
         def __iter__(self):
             yield self.token
@@ -194,8 +183,11 @@ try:
             return (self.token, self.secret)[index]
 
         def is_valid(self):
-            return (is_valid_token(self.token) and
-                    is_valid_token(self.secret))
+            try:
+                clean_tokens(self.token, self.secret)
+                return True
+            except ValueError:
+                return False
 
     class OAuthClient(Client):
         """API client that uses OAuth tokens. Layers a more complex form of
@@ -217,7 +209,7 @@ try:
             self.__access = OAuthToken(access_token, access_secret)
             super(OAuthClient, self).__init__(**kwargs)
 
-        def _request(self, *args, **kwargs):
+        def _do_request(self, *args, **kwargs):
             if not self.__access.is_valid():
                 raise APIError('You must obtain an access token before making API '
                                'calls.')
@@ -227,7 +219,7 @@ try:
                                     resource_owner_key=self.__access.token,
                                     resource_owner_secret=self.__access.secret,
                                     signature_method=SIGNATURE_PLAINTEXT)
-            return super(OAuthClient, self)._request(*args, **kwargs)
+            return super(OAuthClient, self)._do_request(*args, **kwargs)
 
         def get_request_token(self, callback=None):
             "The first step of the OAuth workflow."

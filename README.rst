@@ -72,6 +72,17 @@ Three methods are supported for providing API credentials.
        >>> api = BasicClient()
        >>> api.get('/ping')
 
+   Besides the default netrc file location, you can also specify a location to
+   read credentials from (in the same format as netrc) using the optional
+   :code:`netrcfile` kwarg.
+
+   .. code:: python
+
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from netrc
+       >>> api = BasicClient(netrcfile='/etc/smartfile.keys')
+       >>> api.get('/ping')
+
 3. Parameters when instantiating the client.
 
    .. code:: python
