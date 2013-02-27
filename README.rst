@@ -42,11 +42,8 @@ Or via source code / GitHub.
     $ cd smartfile
     $ python setup.py install
 
-More information is available at GitHub and PyPI.
-
-https://pypi.python.org/pypi/smartfile/
-
-https://github.com/smartfile/client-python
+More information is available at `GitHub <https://github.com/smartfile/client-python>`
+and `PyPI <https://pypi.python.org/pypi/smartfile/>`.
 
 Usage
 -----
