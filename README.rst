@@ -45,6 +45,7 @@ Or via source code / GitHub.
 More information is available at GitHub and PyPI.
 
 https://pypi.python.org/pypi/smartfile/
+
 https://github.com/smartfile/client-python
 
 Usage
