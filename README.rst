@@ -38,8 +38,8 @@ Or via source code / GitHub.
 
 ::
 
-    $ git clone https://github.com/smartfile/client-python.git
-    $ cd client-python
+    $ git clone https://github.com/smartfile/client-python.git smartfile
+    $ cd smartfile
     $ python setup.py install
 
 More information is available at GitHub and PyPI.
