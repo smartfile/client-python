@@ -13,8 +13,9 @@ from requests.exceptions import RequestException
 from smartfile.errors import APIError
 from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
-from smartfile.__version__ import __version__
 
+
+__version__ = '2.1'
 
 API_URL = 'https://app.smartfile.com/'
 

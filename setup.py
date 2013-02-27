@@ -1,13 +1,27 @@
 #!/bin/env python
 
 import os
+import re
 from distutils.core import setup
 
-from smartfile.__version__ import __version__
+VERSION_PATTERN = re.compile(r'__version__\W*\=\W*["\'](.*)["\']')
+VERSION = None
+
+with file('smartfile/__init__.py') as f:
+    for line in f.xreadlines():
+        m = VERSION_PATTERN.search(line)
+        if m:
+            VERSION = m.group(1)
+            break
+
+if VERSION is None:
+    raise Exception('Could not parse version from module. Is __version__ '
+                    'defined in __init__.py?')
+
 
 name = 'smartfile'
 release = '1'
-versrel = __version__ + '-' + release
+versrel = VERSION + '-' + release
 readme = os.path.join(os.path.dirname(__file__), 'README.rst')
 long_description = file(readme).read()
 
