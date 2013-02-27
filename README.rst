@@ -8,21 +8,44 @@ uses and contributes to Open Source software.
 .. figure:: http://www.smartfile.com/images/logo.jpg
    :alt: SmartFile
 
-SmartFile API client
-====================
-
 Introduction
 ------------
 
 This library includes two API clients. Each one represents one of the supported
-authentication methods. :code:`BasicClient` is used for HTTP Basic authentication,
-using an API key and password. :code:`OAuthClient` is used for OAuth authentication,
+authentication methods. ``BasicClient`` is used for HTTP Basic authentication,
+using an API key and password. ``OAuthClient`` is used for OAuth authentication,
 using tokens.
 
 Both clients provide a thin wrapper around an HTTP library, taking care of some
 of the mundane details for you. The intended use of this library is to refer to
 the API documentation to discover the API endpoint you wish to call, then use
 the client library to invoke this call.
+
+SmartFile API information is available at our developer site.
+
+https://app.smartfile.com/api/
+
+Installation
+------------
+
+You can install via ``pip``.
+
+::
+
+    $ pip install smartfile
+
+Or via source code / GitHub.
+
+::
+
+    $ git clone https://github.com/smartfile/client-python.git
+    $ cd client-python
+    $ python setup.py install
+
+More information is available at GitHub and PyPI.
+
+https://pypi.python.org/pypi/smartfile/
+https://github.com/smartfile/client-python
 
 Usage
 -----
@@ -43,10 +66,15 @@ Three methods are supported for providing API credentials.
 
 1. Environment variables.
 
+   Export your credentials via your environment.
+
    ::
 
        $ export SMARTFILE_API_KEY=**********
        $ export SMARTFILE_API_PASSWORD=**********
+
+   And then you can use the client without providing any credentials in your
+   code.
 
    .. code:: python
 
@@ -57,13 +85,16 @@ Three methods are supported for providing API credentials.
 
 2. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
-   :code:`~/.netrc`:
+   You can place the following into ``~/.netrc``:
 
    ::
 
        machine app.smartfile.com
          login **********
          password **********
+
+   And then you can use the client without providing any credentials in your
+   code.
 
    .. code:: python
 
@@ -72,9 +103,8 @@ Three methods are supported for providing API credentials.
        >>> api = BasicClient()
        >>> api.get('/ping')
 
-   Besides the default netrc file location, you can also specify a location to
-   read credentials from (in the same format as netrc) using the optional
-   :code:`netrcfile` kwarg.
+   You can override the default netrc file location, using the optional
+   ``netrcfile`` kwarg.
 
    .. code:: python
 
@@ -108,7 +138,7 @@ for using the GET method, which is to simply invoke the client.
 
 Some endpoints accept an ID, this might be a numeric value, a path, or name,
 depending on the object type. For example, a user's id is their unique
-:code:`username`. For a file path, the id is it's full path.
+``username``. For a file path, the id is it's full path.
 
 .. code:: python
 
@@ -139,7 +169,7 @@ File transfers
 Uploading and downloading files is supported.
 
 To upload a file, pass either a file-like object or a tuple of
-:code:`(filename, file-like)` as a kwarg.
+``(filename, file-like)`` as a kwarg.
 
 .. code:: python
 
@@ -151,7 +181,7 @@ To upload a file, pass either a file-like object or a tuple of
     >>> # Or use a file-like object with a name attribute
     >>> api.post('/path/data/', file=file('foobar.png', 'rb'))
 
-Downloading is automatic, if the :code:`'Content-Type'` header indicates
+Downloading is automatic, if the ``'Content-Type'`` header indicates
 content other than the expected JSON return value, then a file-like object is
 returned.
 
