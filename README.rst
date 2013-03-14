@@ -1,20 +1,16 @@
-.. figure:: https://travis-ci.org/smartfile/client-python.png
-   :alt: Travis CI Status
-   :target: https://travis-ci.org/smartfile/client-python
-
 A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
 uses and contributes to Open Source software.
 
 .. figure:: http://www.smartfile.com/images/logo.jpg
    :alt: SmartFile
 
-Introduction
+Summary
 ------------
 
 This library includes two API clients. Each one represents one of the supported
 authentication methods. ``BasicClient`` is used for HTTP Basic authentication,
-using an API key and password. ``OAuthClient`` is used for OAuth authentication,
-using tokens.
+using an API key and password. ``OAuthClient`` is used for OAuth (version 1) authentication,
+using tokens, which will require user interaction to complete authentication with the API.
 
 Both clients provide a thin wrapper around an HTTP library, taking care of some
 of the mundane details for you. The intended use of this library is to refer to
@@ -27,27 +23,16 @@ SmartFile API information is available at the
 Installation
 ------------
 
-You can install via ``pip``.
-
 ::
 
-    $ pip install smartfile
-
-Or via source code / GitHub.
-
-::
-
-    $ git clone https://github.com/smartfile/client-python.git smartfile
+    $ git clone https://github.com/kissync/smartfile-client-python.git smartfile
     $ cd smartfile
     $ python setup.py install
-
-More information is available at `GitHub <https://github.com/smartfile/client-python>`_
-and `PyPI <https://pypi.python.org/pypi/smartfile/>`_.
 
 Usage
 -----
 
-Some of the details this library takes care of are.
+Some of the details this library takes care of are:
 
 * Encoding and decoding of parameters and return values. You deal with Python
   types only.
@@ -59,63 +44,34 @@ Some of the details this library takes care of are.
 Authentication
 --------------
 
-Three methods are supported for providing API credentials.
+1. Basic Authentication
 
-1. Environment variables.
-
-   Export your credentials via your environment.
-
-   ::
-
-       $ export SMARTFILE_API_KEY=**********
-       $ export SMARTFILE_API_PASSWORD=**********
-
-   And then you can use the client without providing any credentials in your
-   code.
-
-   .. code:: python
-
-       >>> from smartfile import BasicClient
-       >>> # Credentials are read automatically from environment
-       >>> api = BasicClient()
-       >>> api.get('/ping')
-
-2. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
-
-   You can place the following into ``~/.netrc``:
-
-   ::
-
-       machine app.smartfile.com
-         login **********
-         password **********
-
-   And then you can use the client without providing any credentials in your
-   code.
-
-   .. code:: python
-
-       >>> from smartfile import BasicClient
-       >>> # Credentials are read automatically from netrc
-       >>> api = BasicClient()
-       >>> api.get('/ping')
-
-   You can override the default netrc file location, using the optional
-   ``netrcfile`` kwarg.
-
-   .. code:: python
-
-       >>> from smartfile import BasicClient
-       >>> # Credentials are read automatically from netrc
-       >>> api = BasicClient(netrcfile='/etc/smartfile.keys')
-       >>> api.get('/ping')
-
-3. Parameters when instantiating the client.
+Authentication using basic authentication is as easy as giving it parameters when instantiating the client.
+(Environmental variables are not safe for most implementations, as these are exposed to the whole user account)
 
    .. code:: python
 
        >>> from smartfile import BasicClient
        >>> api = BasicClient('**********', '**********')
+       >>> api.get('/ping')
+
+2. OAuth Authentication
+
+Authentication using OAuth authentication is bit more complicated, as it involves tokens and secrets.
+
+   .. code:: python
+
+       >>> from smartfile import OAuthClient
+       >>> api = OAuthClient('**********', '**********')
+       >>> # Be sure to only call each method once for each OAuth login
+       >>> #
+       >>> # This is the first step with the client, which should be left alone
+       >>> api.get_request_token()
+       >>> # Redirect users to the following URL:
+       >>> # print "In your browser, go to: " + api.get_authorization_url()
+       >>> # This example uses raw_input to get the verification from the console:
+       >>> client_verification = raw_input("What was the verification? :")
+       >>> api.get_access_token(None, client_verification)
        >>> api.get('/ping')
 
 Calling endpoints
