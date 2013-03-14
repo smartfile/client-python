@@ -57,7 +57,7 @@ Authentication
 
 1. Basic Authentication
 
-Three methods are supported for providing API credentials.
+Three methods are supported for providing API credentials using basic authentication.
 
 * Parameters when instantiating the client.
 
