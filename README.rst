@@ -43,6 +43,8 @@ and `PyPI <https://pypi.python.org/pypi/smartfile/>`_.
 Usage
 -----
 
+Choose between Basic and OAuth authentication methods, then continue to use the SmartFile API.
+
 Some of the details this library takes care of are:
 
 * Encoding and decoding of parameters and return values. You deal with Python
@@ -52,14 +54,12 @@ Some of the details this library takes care of are:
 * Authentication. Provide the credentials that you obtained from SmartFile,
   and plug them into this library. It will take care of the details.
 
-Authentication
---------------
-
-1. Basic Authentication
+Basic Authentication
+--------------------
 
 Three methods are supported for providing API credentials using basic authentication.
 
-* Parameters when instantiating the client.
+1. Parameters when instantiating the client.
 
    .. code:: python
 
@@ -67,7 +67,7 @@ Three methods are supported for providing API credentials using basic authentica
        >>> api = BasicClient('**********', '**********')
        >>> api.get('/ping')
 
-* Environment variables.
+2. Environment variables.
 
    Export your credentials via your environment.
 
@@ -86,7 +86,7 @@ Three methods are supported for providing API credentials using basic authentica
        >>> api = BasicClient()
        >>> api.get('/ping')
 
-* `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
+3. `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
 
    You can place the following into ``~/.netrc``:
 
@@ -117,7 +117,8 @@ Three methods are supported for providing API credentials using basic authentica
        >>> api.get('/ping')
 
 
-2. OAuth Authentication
+OAuth Authentication
+--------------------
 
 Authentication using OAuth authentication is bit more complicated, as it involves tokens and secrets.
 
