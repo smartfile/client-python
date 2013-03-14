@@ -1,3 +1,7 @@
+.. figure:: https://travis-ci.org/smartfile/client-python.png
+   :alt: Travis CI Status
+   :target: https://travis-ci.org/smartfile/client-python
+
 A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
 uses and contributes to Open Source software.
 
@@ -33,7 +37,7 @@ Or via source code / GitHub.
 
 ::
 
-    $ git clone https://github.com/kissync/smartfile-client-python.git smartfile
+    $ git clone https://github.com/smartfile/client-python.git smartfile
     $ cd smartfile
     $ python setup.py install
 
@@ -51,8 +55,8 @@ Some of the details this library takes care of are:
   types only.
 * URLs, using the API version, endpoint, and object ID, the URL is created for
   you.
-* Authentication. Provide the credentials that you obtained from SmartFile,
-  and plug them into this library. It will take care of the details.
+* Authentication. Provide your API credentials to this library, it will take
+  care of the details.
 
 Basic Authentication
 --------------------
@@ -127,7 +131,7 @@ Authentication using OAuth authentication is bit more complicated, as it involve
     >>> from smartfile import OAuthClient
     >>> api = OAuthClient('**********', '**********')
     >>> # Be sure to only call each method once for each OAuth login
-    >>> #
+    >>> 
     >>> # This is the first step with the client, which should be left alone
     >>> api.get_request_token()
     >>> # Redirect users to the following URL:
@@ -226,10 +230,3 @@ to poll the status of the task.
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html
-
-A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
-uses and contributes to Open Source software.
-
-.. figure:: https://travis-ci.org/smartfile/client-python.png
-   :alt: Travis CI Status
-   :target: https://travis-ci.org/smartfile/client-python
