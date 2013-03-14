@@ -23,11 +23,22 @@ SmartFile API information is available at the
 Installation
 ------------
 
+You can install via ``pip``.
+
+::
+
+    $ pip install smartfile
+
+Or via source code / GitHub.
+
 ::
 
     $ git clone https://github.com/kissync/smartfile-client-python.git smartfile
     $ cd smartfile
     $ python setup.py install
+
+More information is available at `GitHub <https://github.com/smartfile/client-python>`_
+and `PyPI <https://pypi.python.org/pypi/smartfile/>`_.
 
 Usage
 -----
@@ -46,14 +57,65 @@ Authentication
 
 1. Basic Authentication
 
-Authentication using basic authentication is as easy as giving it parameters when instantiating the client.
-(Environmental variables are not safe for most implementations, as these are exposed to the whole user account)
+Three methods are supported for providing API credentials.
+
+* Parameters when instantiating the client.
 
    .. code:: python
 
        >>> from smartfile import BasicClient
        >>> api = BasicClient('**********', '**********')
        >>> api.get('/ping')
+
+* Environment variables.
+
+   Export your credentials via your environment.
+
+   ::
+
+       $ export SMARTFILE_API_KEY=**********
+       $ export SMARTFILE_API_PASSWORD=**********
+
+   And then you can use the client without providing any credentials in your
+   code.
+
+   .. code:: python
+
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from environment
+       >>> api = BasicClient()
+       >>> api.get('/ping')
+
+* `netrc <http://man.cx/netrc%284%29>`_ file (not supported with OAuth).
+
+   You can place the following into ``~/.netrc``:
+
+   ::
+
+       machine app.smartfile.com
+         login **********
+         password **********
+
+   And then you can use the client without providing any credentials in your
+   code.
+
+   .. code:: python
+
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from netrc
+       >>> api = BasicClient()
+       >>> api.get('/ping')
+
+   You can override the default netrc file location, using the optional
+   ``netrcfile`` kwarg.
+
+   .. code:: python
+
+       >>> from smartfile import BasicClient
+       >>> # Credentials are read automatically from netrc
+       >>> api = BasicClient(netrcfile='/etc/smartfile.keys')
+       >>> api.get('/ping')
+
 
 2. OAuth Authentication
 
@@ -163,3 +225,10 @@ to poll the status of the task.
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html
+
+A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
+uses and contributes to Open Source software.
+
+.. figure:: https://travis-ci.org/smartfile/client-python.png
+   :alt: Travis CI Status
+   :target: https://travis-ci.org/smartfile/client-python
