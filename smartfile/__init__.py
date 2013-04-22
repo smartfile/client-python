@@ -203,22 +203,22 @@ try:
                 access_token = os.environ.get('SMARTFILE_ACCESS_TOKEN')
             if access_secret is None:
                 access_secret = os.environ.get('SMARTFILE_ACCESS_SECRET')
-            self.__client = OAuthToken(client_token, client_secret)
-            if not self.__client.is_valid():
+            self._client = OAuthToken(client_token, client_secret)
+            if not self._client.is_valid():
                 raise APIError('You must provide a client_token and client_secret '
                                'for OAuth.')
-            self.__access = OAuthToken(access_token, access_secret)
+            self._access = OAuthToken(access_token, access_secret)
             super(OAuthClient, self).__init__(**kwargs)
 
         def _do_request(self, *args, **kwargs):
-            if not self.__access.is_valid():
+            if not self._access.is_valid():
                 raise APIError('You must obtain an access token before making API '
                                'calls.')
             # Add the OAuth parameters.
-            kwargs['auth'] = OAuth1(self.__client.token,
-                                    client_secret=self.__client.secret,
-                                    resource_owner_key=self.__access.token,
-                                    resource_owner_secret=self.__access.secret,
+            kwargs['auth'] = OAuth1(self._client.token,
+                                    client_secret=self._client.secret,
+                                    resource_owner_key=self._access.token,
+                                    resource_owner_secret=self._access.secret,
                                     signature_method=SIGNATURE_PLAINTEXT)
             return super(OAuthClient, self)._do_request(*args, **kwargs)
 
@@ -226,8 +226,8 @@ try:
             "The first step of the OAuth workflow."
             if callback:
                 callback = unicode(callback)
-            oauth = OAuth1(self.__client.token,
-                           client_secret=self.__client.secret,
+            oauth = OAuth1(self._client.token,
+                           client_secret=self._client.secret,
                            callback_uri=callback,
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
@@ -258,17 +258,17 @@ try:
                                    'and access token. Use get_request_token() '
                                    'first.')
                 request = self.__request
-            oauth = OAuth1(self.__client.token,
-                           client_secret=self.__client.secret,
+            oauth = OAuth1(self._client.token,
+                           client_secret=self._client.secret,
                            resource_owner_key=request.token,
                            resource_owner_secret=request.secret,
                            verifier=unicode(verifier),
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
-            self.__access = OAuthToken(credentials.get('oauth_token')[0],
-                                       credentials.get('oauth_token_secret')[0])
-            return self.__access
+            self._access = OAuthToken(credentials.get('oauth_token')[0],
+                                      credentials.get('oauth_token_secret')[0])
+            return self._access
 
 
 except ImportError:
