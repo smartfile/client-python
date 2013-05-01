@@ -23,24 +23,20 @@ class SyncError(Exception):
 
 class RollingChecksum(object):
     def __init__(self, data=None, block_size=BS):
-        self.s, self.a, self.b = 0, 0, 0
-        self.block_size = block_size
+        self.bs, self.s, self.a, self.b = block_size, 0, 0, 0
         if data:
-            l = len(data)
-            for i in xrange(l):
-                d = ord(data[i])
-                self.a += d
+            l, data = len(data), map(ord, data)
+            self.a = sum(data)
+            for i, d in enumerate(data):
                 self.b += (l - i) * d
-            self.s = (self.b << 16) | self.a
 
     def roll(self, pop, add):
         pop, add = ord(pop), ord(add)
         self.a -= pop - add
-        self.b -= pop * self.block_size - self.a
-        self.s = (self.b << 16) | self.a
+        self.b -= pop * self.bs - self.a
 
     def digest(self):
-        return self.s
+        return (self.b << 16) | self.a
 
 
 def table(f, block_size=BS):
@@ -70,17 +66,16 @@ def table(f, block_size=BS):
         f.seek(0)
     except AttributeError:
         pass
-    blocks, md5sum = {}, hashlib.md5()
+    blocks = {}
     while True:
         offset, block = f.tell(), f.read(block_size)
-        md5sum.update(block)
         if not block:
             break
         length = len(block)
         sum1 = RollingChecksum(block).digest()
         sum2 = hashlib.md5(block).hexdigest()
         blocks.setdefault(sum1, {})[sum2] = (offset, length)
-    return md5sum.hexdigest(), blocks
+    return blocks
 
 
 def delta(f, blocks, block_size=BS, max_buffer=MAX_BUFFER):
@@ -104,24 +99,26 @@ def delta(f, blocks, block_size=BS, max_buffer=MAX_BUFFER):
     # the SRC, so that the DST can apply them.
     ranges, blob = [], tempfile.SpooledTemporaryFile(max_size=max_buffer)
     # Window is the current block we are searching for. Reverse is our write
-    # buffer, data that was examined and fell out of our window.
-    window, reverse = deque(), []
+    # buffer, data that was examined and fell out of our window. Forward is our
+    # read buffer, allowing us to read more than one byte at a time.
+    window, forward, reverse = deque(), deque(), []
     # We will be calculating checksums as we move through the stream.
-    sum1, md5sum = RollingChecksum(), hashlib.md5()
+    sum1 = RollingChecksum()
     while True:
         if not window:
-            block = f.read(block_size)
-            if not block:
-                break
-            window.extend(block)
-            md5sum.update(block)
-            sum1 = RollingChecksum(block)
+            if forward:
+                window.extend(forward)
+                forward.clear()
+            need = block_size - len(window)
+            if need:
+                window.extend(f.read(need))
+            sum1 = RollingChecksum(''.join(window), block_size=block_size)
         # Check if our window matches any blocks:
         matches = blocks.get(sum1.digest())
         if matches:
             sum2 = hashlib.md5(''.join(window)).hexdigest()
-            match = matches.get(sum2)
-            if match:
+            offset, length = matches.get(sum2, (None, None))
+            if offset is not None:
                 # We found a block that matches our window.
                 if reverse:
                     # First flush our reverse buffer.
@@ -131,16 +128,17 @@ def delta(f, blocks, block_size=BS, max_buffer=MAX_BUFFER):
                 elif ranges and ranges[-1][0] == DST:
                     # If the previous range is also of type DST, merge and
                     # replace it.
-                    p = ranges.pop()
-                    match = (p[0], p[1] + match[1])
-                ranges.append((DST, ) + match)
+                    _, poffset, plength = ranges.pop()
+                    offset, length = poffset, plength + length
+                ranges.append((DST, offset, length))
                 # dump our window
                 window.clear()
                 continue
-        nbyte = f.read(1)
-        if not nbyte:
-            break
-        md5sum.update(nbyte)
+        if not forward:
+            forward.extend(f.read(block_size))
+            if not forward:
+                break
+        nbyte = forward.popleft()
         # Start moving our window by popping it's tail.
         obyte = window.popleft()
         # Update rolling checksum.
@@ -155,7 +153,7 @@ def delta(f, blocks, block_size=BS, max_buffer=MAX_BUFFER):
     if reverse:
         ranges.append((SRC, blob.tell(), len(reverse)))
         blob.write(''.join(reverse))
-    return md5sum.hexdigest(), ranges, blob
+    return ranges, blob
 
 
 def patch(f, ranges, blob, max_buffer=MAX_BUFFER):
@@ -169,7 +167,6 @@ def patch(f, ranges, blob, max_buffer=MAX_BUFFER):
         f.seek(0)
     except AttributeError:
         pass
-    md5sum = hashlib.md5()
     sources = {
         SRC: blob,
         DST: f,
@@ -178,8 +175,6 @@ def patch(f, ranges, blob, max_buffer=MAX_BUFFER):
     for direction, offset, length in ranges:
         s = sources[direction]
         s.seek(offset)
-        block = s.read(length)
-        md5sum.update(block)
-        o.write(block)
+        o.write(s.read(length))
     o.seek(0)
     return o

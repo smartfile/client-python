@@ -10,6 +10,8 @@ import unittest
 import tempfile
 import threading
 
+from collections import deque
+
 from StringIO import StringIO
 
 from BaseHTTPServer import HTTPServer
@@ -389,22 +391,22 @@ class SyncTableTestCase(unittest.TestCase):
 
     def test_block_size_default(self):
         "Ensure default block_size works."
-        md5sum, blocks = table(self.rand)
+        blocks = table(self.rand)
         self.assertEqual(len(blocks), self.rand.tell()/BS)
 
     def test_block_size_1024(self):
         "Ensure the proper number of blocks are produced."
-        md5sum, blocks = table(self.rand, block_size=1024)
+        blocks = table(self.rand, block_size=1024)
         self.assertEqual(len(blocks), 1024)
 
     def test_block_size_2048(self):
         "Ensure the proper number of blocks are produced."
-        md5sum, blocks = table(self.rand, block_size=2048)
+        blocks = table(self.rand, block_size=2048)
         self.assertEqual(len(blocks), 512)
 
     def test_blocks(self):
         "Ensure the block checksums are correct."
-        md5sum, blocks = table(self.rand)
+        blocks = table(self.rand)
         self.rand.seek(0)
         while True:
             block = self.rand.read(BS)
@@ -414,11 +416,6 @@ class SyncTableTestCase(unittest.TestCase):
             self.assertIsNotNone(match)
             self.assertIn(hashlib.md5(block).hexdigest(), match)
 
-    def test_md5sum(self):
-        "Ensure the file checksum is correct."
-        md5sum, blocks = table(self.rand, block_size=1024)
-        self.assertEqual(md5sum, hashlib.md5(self.rand.getvalue()).hexdigest())
-
 
 class SyncDeltaTestCase(unittest.TestCase):
     def setUp(self):
@@ -427,10 +424,8 @@ class SyncDeltaTestCase(unittest.TestCase):
 
     def test_identical(self):
         "Ensure two files with ALL matching blocks are handled."
-        md5sum1, blocks = table(self.rand1)
-        md5sum2, ranges, blob = delta(self.rand1, blocks)
-        self.assertEqual(md5sum1, md5sum2)
-        self.assertEqual(md5sum2, hashlib.md5(self.rand1.getvalue()).hexdigest())
+        blocks = table(self.rand1)
+        ranges, blob = delta(self.rand1, blocks)
         # No non-matching blocks
         self.assertEqual(blob.tell(), 0)
         # All blocks should be collapsed into a single range
@@ -438,10 +433,8 @@ class SyncDeltaTestCase(unittest.TestCase):
 
     def test_different(self):
         "Ensure two files with NO matching blocks are handled."
-        md5sum1, blocks = table(self.rand1)
-        md5sum2, ranges, blob = delta(self.rand2, blocks)
-        self.assertNotEqual(md5sum1, md5sum2)
-        self.assertEqual(md5sum2, hashlib.md5(self.rand2.getvalue()).hexdigest())
+        blocks = table(self.rand1)
+        ranges, blob = delta(self.rand2, blocks)
         # Blob should contain the entire source file
         self.assertEqual(blob.tell(), self.rand1.tell())
         # There should be one range representing the entire source file
@@ -464,27 +457,17 @@ class SyncDeltaTestCase(unittest.TestCase):
             self.rand2.seek(block_num*1024)
             self.rand2.write(self.rand1.read(1024))
         # Continue as normal.
-        md5sum1, blocks = table(self.rand1, block_size=1024)
-        md5sum2, ranges, blob = delta(self.rand2, blocks, block_size=1024)
-        self.assertNotEqual(md5sum1, md5sum2)
-        self.assertEqual(md5sum2, hashlib.md5(self.rand2.getvalue()).hexdigest())
+        blocks = table(self.rand1, block_size=1024)
+        ranges, blob = delta(self.rand2, blocks, block_size=1024)
+        self.assertLess(blob.tell(), self.rand1.tell() / 2 + 4096)
         for i, (direction, offset, length) in enumerate(ranges):
-            if i in matching:
-                # If the block matches, we will find it in the DST file, which
-                # is the local file. The offset will be the same as the
-                # position it will be written to.
-                d, o = DST, i * 1024
-            else:
-                # If the block differs, we will find it in the blob from the SRC
-                # file. It's offset will be equal to the number of non-matching
-                # blocks so far * block_size.
-                # Count non-matching blocks so far, each will be present in blob.
-                nm = len([b for b in xrange(i) if b not in matching])
-                # Expect SRC as direction and calculate our offset.
-                d, o = SRC, nm * 1024
-            self.assertEqual(direction, d, 'Invalid direction %s for block %s' % (direction, i))
-            self.assertEqual(offset, o, 'Invalid offset %s for block %s' % (offset, i))
-            #self.assertEqual(length, 1024, 'Invalid length %s for block %s' % (length, i))
+            if direction == DST:
+                # If the block matches, we should find it's offset / block_size
+                # in matching:
+                block_num = offset / 1024
+                self.assertIn(block_num, matching)
+            # Since blocks are combined, there are not many other assertions we
+            # can make.
 
 
 class SyncPatchTestCase(unittest.TestCase):
@@ -494,23 +477,87 @@ class SyncPatchTestCase(unittest.TestCase):
 
     def test_1024(self):
         "Ensure a block_size of 1024 works."
-        md5sum1, blocks = table(self.rand1, block_size=1024)
-        md5sum2, ranges, blob = delta(self.rand2, blocks, block_size=1024)
+        blocks = table(self.rand1, block_size=1024)
+        ranges, blob = delta(self.rand2, blocks, block_size=1024)
         out = patch(self.rand1, ranges, blob)
-        self.assertEqual(hashlib.md5(out.read()).hexdigest(), md5sum2)
+        self.assertEqual(hashlib.md5(out.read()).digest(),
+                         hashlib.md5(self.rand2.getvalue()).digest())
 
     def test_2048(self):
         "Ensure a block_size of 2048 works."
-        md5sum1, blocks = table(self.rand1, block_size=2048)
-        md5sum2, ranges, blob = delta(self.rand2, blocks, block_size=1024)
+        blocks = table(self.rand1, block_size=2048)
+        ranges, blob = delta(self.rand2, blocks, block_size=2048)
         out = patch(self.rand1, ranges, blob)
-        self.assertEqual(hashlib.md5(out.read()).hexdigest(), md5sum2)
+        self.assertEqual(hashlib.md5(out.read()).digest(),
+                         hashlib.md5(self.rand2.getvalue()).digest())
+
+    def test_2001(self):
+        "Ensure an odd block size works."
+        blocks = table(self.rand1, block_size=2001)
+        ranges, blob = delta(self.rand2, blocks, block_size=2001)
+        out = patch(self.rand1, ranges, blob)
+        self.assertEqual(hashlib.md5(out.read()).digest(),
+                         hashlib.md5(self.rand2.getvalue()).digest())
 
     def test_identical(self):
-        md5sum1, blocks = table(self.rand1, block_size=2048)
-        md5sum2, ranges, blob = delta(self.rand1, blocks, block_size=1024)
+        "Ensure patching a file that is identical works."
+        blocks = table(self.rand1, block_size=2048)
+        ranges, blob = delta(self.rand1, blocks, block_size=1024)
         out = patch(self.rand1, ranges, blob)
-        self.assertEqual(hashlib.md5(out.read()).hexdigest(), md5sum1)
+        self.assertEqual(hashlib.md5(out.read()).digest(),
+                         hashlib.md5(self.rand1.getvalue()).digest())
+
+
+# Original functions, I converted to a class and optimized.
+# http://code.activestate.com/recipes/577518-rsync-algorithm/
+def weakchecksum(data):
+    a = b = 0
+    l = len(data)
+    for i in range(l):
+        a += ord(data[i])
+        b += (l - i)*ord(data[i])
+    return (b << 16) | a, a, b
+
+
+def rollingchecksum(removed, new, a, b, blocksize=4096):
+    a -= ord(removed) - ord(new)
+    b -= ord(removed) * blocksize - a
+    return (b << 16) | a, a, b
+
+
+class SyncChecksumTestCase(unittest.TestCase):
+    def test_single(self):
+        "Ensure our checksum on a static buffer is true to the original."
+        for i in xrange(100):
+            data = os.urandom(32)
+            self.assertEqual(RollingChecksum(data).digest(), weakchecksum(data)[0])
+
+    def test_rolling(self):
+        "Ensure our rolling checksum is true to the original."
+        data = deque(os.urandom(32))
+        sum1 = RollingChecksum(data, block_size=32)
+        sum2, a, b = weakchecksum(data)
+        for i in xrange(100):
+            next = os.urandom(1)
+            data.append(next)
+            last = data.popleft()
+            sum1.roll(last, next)
+            sum2, a, b = rollingchecksum(last, next, a, b, blocksize=32)
+            self.assertEqual(sum1.digest(), sum2)
+
+    def test_equality(self):
+        """Ensure that a rolling checksum created on a buffer is equal to the
+        one created when rolling over that buffer."""
+        data = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        # Create a checksum of bytes 10 -20
+        sum1 = RollingChecksum(data[10:20], block_size=10)
+        # Create a checksum of bytes 0 - 10
+        sum2 = RollingChecksum(data[:10], block_size=10)
+        # Roll the second checksum over the buffer until reaching bytes 10-20.
+        for i in xrange(10):
+            sum2.roll(data[i], data[10+i])
+        # Sums should now be equal.
+        self.assertEqual(sum1.digest(), sum2.digest())
 
 
 if __name__ == '__main__':
