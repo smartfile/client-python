@@ -15,7 +15,7 @@ BS = 4096
 # Min / Max block_size to use.
 BS_MIN, BS_MAX = 1024, 32768
 # Default amount of file data to buffer in memory before using disk.
-MAX_BUFFER = 1024**2*5
+MAX_BUFFER = 1024 ** 2 * 5
 
 
 class SyncError(Exception):
@@ -122,8 +122,8 @@ def delta(f, md5sum, blocks, block_size=None, max_buffer=MAX_BUFFER):
         if direction is None:
             # We have not yet determined direction, meaning, we have a
             # block and checksums that need to be compared.
-            if (sum1 == hex(zlib.adler32(block)) and
-                sum2 == hashlib.md5(block).hexdigest()):
+            if sum1 == hex(zlib.adler32(block)) and \
+               sum2 == hashlib.md5(block).hexdigest():
                 # Data is identical in both copies, delta should instruct
                 # copying data from remote file.
                 direction = DST
@@ -132,7 +132,7 @@ def delta(f, md5sum, blocks, block_size=None, max_buffer=MAX_BUFFER):
                 # local copy.
                 direction = SRC
         if direction == DST:
-            offset, length = i*block_size, block_size
+            offset, length = i * block_size, block_size
         else:
             offset, length = blob.tell(), len(block)
             blob.write(block)
