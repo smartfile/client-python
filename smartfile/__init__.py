@@ -24,10 +24,12 @@ HTTP_USER_AGENT = 'SmartFile Python API client v{0}'.format(__version__)
 
 
 def clean_tokens(*args):
+    if not all(map(bool, args)):
+        raise ValueError("not provided")
     args = map(string.strip, args)
     for i, arg in enumerate(args):
         if len(arg) < 30:
-            raise ValueError("Too short")
+            raise ValueError("too short")
         if not isinstance(arg, unicode):
             arg = unicode(arg)
         args[i] = arg
