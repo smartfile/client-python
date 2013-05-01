@@ -3,6 +3,7 @@ import zlib
 import hashlib
 import tempfile
 
+from collections import deque
 from itertools import count
 
 
@@ -12,8 +13,6 @@ from itertools import count
 SRC, DST = 0, 1
 # Default block_size to use.
 BS = 4096
-# Min / Max block_size to use.
-BS_MIN, BS_MAX = 1024, 32768
 # Default amount of file data to buffer in memory before using disk.
 MAX_BUFFER = 1024 ** 2 * 5
 
@@ -22,122 +21,140 @@ class SyncError(Exception):
     pass
 
 
-def calc_block_size(f):
-    "Tries to obtain the optimal block size."
-    # Try to determine the file size using methods with decreasing chance of
-    # success.
-    size = None
-    # Try to use os.fstat() to determine file size.
-    if callable(getattr(f, 'fileno', None)):
-        try:
-            size = os.fstat(f.fileno()).st_size
-        except:
-            pass
-    # Hmm, try to use seek() to determine file size.
-    if size is None and callable(getattr(f, 'seek', None)):
-        try:
-            f.seek(0, 2)
-            size = f.tell()
-            f.seek(0)
-        except:
-            pass
-    # len()?
-    if size is None:
-        try:
-            size = len(f)
-        except:
-            pass
-    # If we could not determine the size, use the default.
-    if size is None:
-        return BS
-    # Try to use about 1024 blocks, but not less than 1K or greater than 32K.
-    return min(BS_MAX, max(BS_MIN, size / 1024))
+class RollingChecksum(object):
+    def __init__(self, data=None, block_size=BS):
+        self.s, self.a, self.b = 0, 0, 0
+        self.block_size = block_size
+        if data:
+            l = len(data)
+            for i in xrange(l):
+                d = ord(data[i])
+                self.a += d
+                self.b += (l - i) * d
+            self.s = (self.b << 16) | self.a
+
+    def roll(self, pop, add):
+        pop, add = ord(pop), ord(add)
+        self.a -= pop - add
+        self.b -= pop * self.block_size - self.a
+        self.s = (self.b << 16) | self.a
+
+    def digest(self):
+        return self.s
 
 
-def checksum(f, block_size=None):
+def table(f, block_size=BS):
     """
-    Calculates the rolling checksum of a file. Uses both the fast adler32 and
-    md5 algorithms. Both are used because during delta creation, if the faster
-    adler32 does not match, md5 is skipped. In the case adler32 matches, md5
-    is performed as a stronger "double-check".
+    Calculates a table containing block checksums for the given stream. These
+    checksums are stored in dictionaries. The first (fast) checksum may have
+    many collisions, so it is probable that multiple blocks will have the same
+    value for the first checksum, but different values for the second.
+
+    {
+        'fast1': {
+            'slow1': (offset, length),
+            'slow2': (offset, length),
+        },
+        'fast2': {
+            'slow3': (offset, length),
+        }
+    }
+
+    So that the faster checksum can yield possible matching blocks. If a match
+    is found at the first level, the slower (MD5) checksum is performed to find
+    the location of the matching block.
 
     Returns a structure containing file information and the checksums.
     """
-    if not block_size:
-        block_size = calc_block_size(f)
     try:
         f.seek(0)
     except AttributeError:
         pass
-    blocks, md5sum = [], hashlib.md5()
+    blocks, md5sum = {}, hashlib.md5()
     while True:
-        block = f.read(block_size)
+        offset, block = f.tell(), f.read(block_size)
         md5sum.update(block)
         if not block:
             break
-        sum1 = hex(zlib.adler32(block))
+        length = len(block)
+        sum1 = RollingChecksum(block).digest()
         sum2 = hashlib.md5(block).hexdigest()
-        blocks.append((sum1, sum2))
-    return md5sum.hexdigest(), blocks, block_size
+        blocks.setdefault(sum1, {})[sum2] = (offset, length)
+    return md5sum.hexdigest(), blocks
 
 
-def delta(f, md5sum, blocks, block_size=None, max_buffer=MAX_BUFFER):
+def delta(f, blocks, block_size=BS, max_buffer=MAX_BUFFER):
     """
-    Uses the rolling checksum of a remote file to generate a delta for the local
-    copy. The result is a structure that instructs how to peice together blocks
-    from the remote file and the local file to create a file that is identical
-    to the local file. Any blocks from the local file that are referenced by
-    this structure will be contained within the blob.
+    Uses the block table of a remote file to generate a delta for the local
+    copy. The stream is scanned one byte at a time while calculating a rolling
+    checksum. At each step, the block list is searched for a match. If a match
+    is found, the slower MD5 sum is used to verify a matching block.
 
     Returns a two-tuple of the delta structure and a blob containing the
     referenced blocks.
 
     For the purposes of this function, our local file is SRC.
     """
-    if not block_size:
-        block_size = calc_block_size(f)
     try:
         f.seek(0)
     except AttributeError:
         pass
-    md5sum, blob = hashlib.md5(), tempfile.SpooledTemporaryFile(max_size=max_buffer)
-    i, ranges = 0, []
-    for i in count(0):
-        direction, block = None, f.read(block_size)
-        if block:
-            md5sum.update(block)
-        else:
-            # We ran out of data in our local copy, delta should
-            # instruct copying data from remote file.
-            direction = DST
-        try:
-            sum1, sum2 = blocks[i]
-        except IndexError:
+    # Ranges will contain a list of ranges to read from SRC or DST to
+    # reassemble the SRC file. Blob contains the referenced ranges from
+    # the SRC, so that the DST can apply them.
+    ranges, blob = [], tempfile.SpooledTemporaryFile(max_size=max_buffer)
+    # Window is the current block we are searching for. Reverse is our write
+    # buffer, data that was examined and fell out of our window.
+    window, reverse = deque(), []
+    # We will be calculating checksums as we move through the stream.
+    sum1, md5sum = RollingChecksum(), hashlib.md5()
+    while True:
+        if not window:
+            block = f.read(block_size)
             if not block:
-                # If we ran out of data AND checksums, we are done.
                 break
-            # We ran out of checksums, delta should instruct copying
-            # data from our local copy.
-            direction = SRC
-        if direction is None:
-            # We have not yet determined direction, meaning, we have a
-            # block and checksums that need to be compared.
-            if sum1 == hex(zlib.adler32(block)) and \
-               sum2 == hashlib.md5(block).hexdigest():
-                # Data is identical in both copies, delta should instruct
-                # copying data from remote file.
-                direction = DST
-            else:
-                # Data differs, delta should instruct copying data from our
-                # local copy.
-                direction = SRC
-        if direction == DST:
-            offset, length = i * block_size, block_size
-        else:
-            offset, length = blob.tell(), len(block)
-            blob.write(block)
-        ranges.append((direction, offset, length))
-    blob.seek(0)
+            window.extend(block)
+            md5sum.update(block)
+            sum1 = RollingChecksum(block)
+        # Check if our window matches any blocks:
+        matches = blocks.get(sum1.digest())
+        if matches:
+            sum2 = hashlib.md5(''.join(window)).hexdigest()
+            match = matches.get(sum2)
+            if match:
+                # We found a block that matches our window.
+                if reverse:
+                    # First flush our reverse buffer.
+                    ranges.append((SRC, blob.tell(), len(reverse)))
+                    blob.write(''.join(reverse))
+                    del reverse[:]
+                elif ranges and ranges[-1][0] == DST:
+                    # If the previous range is also of type DST, merge and
+                    # replace it.
+                    p = ranges.pop()
+                    match = (p[0], p[1] + match[1])
+                ranges.append((DST, ) + match)
+                # dump our window
+                window.clear()
+                continue
+        nbyte = f.read(1)
+        if not nbyte:
+            break
+        md5sum.update(nbyte)
+        # Start moving our window by popping it's tail.
+        obyte = window.popleft()
+        # Update rolling checksum.
+        sum1.roll(obyte, nbyte)
+        # Finish moving our window, appending to head.
+        window.append(nbyte)
+        # The old byte should be written to the blob
+        reverse.append(obyte)
+    # Combine our remaining buffers.
+    reverse.extend(window)
+    # Flush any remaining data.
+    if reverse:
+        ranges.append((SRC, blob.tell(), len(reverse)))
+        blob.write(''.join(reverse))
     return md5sum.hexdigest(), ranges, blob
 
 
@@ -145,9 +162,6 @@ def patch(f, ranges, blob, max_buffer=MAX_BUFFER):
     """
     Applies a delta to the local file by alternately copying data from the
     local copy and provided blob to recreate the remote file locally.
-
-    After patching it uses the file information to verify that the local file
-    and remote file are identical.
 
     For the purposes of this function, our local file is DST.
     """
