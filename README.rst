@@ -2,6 +2,18 @@
    :alt: Travis CI Status
    :target: https://travis-ci.org/smartfile/client-python
 
+.. image:: https://coveralls.io/repos/smartfile/client-python/badge.png?branch=master
+    :target: https://coveralls.io/r/smartfile/client-python
+    :alt: Code Coverage
+
+.. image:: https://pypip.in/v/smartfile/badge.png
+    :target: https://crate.io/packages/smartfile/
+    :alt: Latest PyPI version
+
+.. image:: https://pypip.in/d/smartfile/badge.png
+    :target: https://crate.io/packages/smartfile/
+    :alt: Number of PyPI downloads
+
 A `SmartFile`_ Open Source project. `Read more`_ about how SmartFile
 uses and contributes to Open Source software.
 

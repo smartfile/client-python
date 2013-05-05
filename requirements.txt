@@ -2,3 +2,5 @@ oauthlib
 requests
 requests_oauthlib
 python-librsync
+coveralls
+coverage

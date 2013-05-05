@@ -13,3 +13,5 @@ before_script:
   - make verify
 script:
   - make test
+after_success:
+  - coveralls

@@ -1,5 +1,5 @@
 test:
-	python tests.py
+	coverage run tests.py
 
 verify:
 	pyflakes -x W smartfile
