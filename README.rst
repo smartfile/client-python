@@ -1,4 +1,4 @@
-.. figure:: https://travis-ci.org/smartfile/client-python.png
+.. image:: https://travis-ci.org/smartfile/client-python.png
    :alt: Travis CI Status
    :target: https://travis-ci.org/smartfile/client-python
 
