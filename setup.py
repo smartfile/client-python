@@ -25,7 +25,7 @@ if VERSION is None:
 
 
 name = 'smartfile'
-release = '2'
+release = '3'
 versrel = VERSION + '-' + release
 long_description = file(get_path('README.rst')).read()
 
