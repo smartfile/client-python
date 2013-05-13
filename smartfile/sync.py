@@ -69,15 +69,15 @@ class RemoteFile(BaseFile):
         kwargs = {}
         if block_size:
             kwargs['block_size'] = block_size
-        return self.api.get('sync/signature', self.path, **kwargs)
+        return self.api.get('path/sync/signature', self.path, **kwargs)
 
     def delta(self, signature):
         "Generates delta for remote file via API using local file's signature."
-        return self.api.post('sync/delta', self.path, signature=signature)
+        return self.api.post('path/sync/delta', self.path, signature=signature)
 
     def patch(self, delta):
         "Applies delta for local file to remote file via API."
-        return self.api.post('sync/patch', self.path, delta=delta)
+        return self.api.post('path/sync/patch', self.path, delta=delta)
 
 
 class SyncClient(object):
@@ -90,6 +90,10 @@ class SyncClient(object):
         """
         self.api = api
         self.block_size = block_size
+
+    @property
+    def version(self):
+        return self.api.version
 
     def sync(self, src, dst):
         """
