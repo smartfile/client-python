@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
+import cgi
 import json
 import zlib
 import random
+import base64
 import hashlib
 import urlparse
 import unittest
@@ -19,6 +21,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 
 from smartfile import BasicClient
 from smartfile import OAuthClient
+from smartfile.sync import SyncClient
 from smartfile.errors import APIError
 from smartfile.errors import RequestError
 
@@ -29,27 +32,41 @@ CLIENT_SECRET = '0I7BV6Bm3Rgfk73LL68vBp0u23KcKr'
 ACCESS_TOKEN = 'hIlkipZNmwIJ28HQtQRcbGuXBePQp5'
 ACCESS_SECRET = 'Scen1dwmVtWhjLpJfnilrfdc5OZWCJ'
 
+SYNC_FILE_A = """This is a test file.
+It will be used with the sync client."""
+SYNC_FILE_B = """It will be used with the sync client.
+This is a test file."""
+
+# b64encode(librsync.signature(SYNC_FILE_A)):
+SYNC_SIGNATURE = base64.b64decode('cnMBNgAACAAAAAAIFvwbJw0ItorhbKRo')
+# b64encode(librsync.delta(SYNC_FILE_B, signature)):
+SYNC_DELTA = base64.b64decode('cnMCNkE6SXQgd2lsbCBiZSB1c2VkIHdpdGggdGhlIHN5bmMgY2xpZW50LgpUaGlzIGlzIGEgdGVzdCBmaWxlLgA=')
+
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
     """
     A simple handler that logs requests for examination.
     """
     class TestRequest(object):
-        def __init__(self, method, path, query=None, data=None):
+        def __init__(self, method, path, query=None, data=None, headers=None):
             self.method = method
             self.path = path
             self.query = query
             self.data = data
+            self.headers = headers
 
     def __init__(self, *args, **kwargs):
         self.verbose = kwargs.pop('verbose', False)
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def record(self, method, path, query=None, data=None):
-        self.server.requests.append(TestHTTPRequestHandler.TestRequest(method,
-                                    path, query=query, data=data))
+        request = TestHTTPRequestHandler.TestRequest(method, path, query=query,
+                                                     data=data,
+                                                     headers=dict(self.headers.items()))
+        self.server.requests.append(request)
+        return request
 
-    def respond(self):
+    def respond(self, request):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -58,11 +75,15 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
     def parse_and_record(self, method):
         urlp = urlparse.urlparse(self.path)
         query, data = urlparse.parse_qs(urlp.query), None
-        if method == 'POST':
+        if method in ('POST', 'PUT'):
             l = int(self.headers['Content-Length'])
-            data = urlparse.parse_qs(self.rfile.read(l))
-        self.record(method, urlp.path, query=query, data=data)
-        self.respond()
+            ct, params = cgi.parse_header(self.headers['Content-Type'])
+            if ct == 'multipart/form-data':
+                data = cgi.parse_multipart(self.rfile, params)
+            else:
+                data = urlparse.parse_qs(self.rfile.read(l))
+        request = self.record(method, urlp.path, query=query, data=data)
+        self.respond(request)
 
     def log_message(self, *args, **kwargs):
         if self.verbose:
@@ -88,7 +109,7 @@ class TestHTTPServer(threading.Thread, HTTPServer):
     """
     allow_reuse_address = True
 
-    def __init__(self, address='127.0.0.1', port=0, handler=TestHTTPRequestHandler):
+    def __init__(self, handler, address='127.0.0.1', port=0):
         HTTPServer.__init__(self, (address, port), handler)
         threading.Thread.__init__(self)
         self.requests = []
@@ -103,8 +124,10 @@ class TestServerTestCase(unittest.TestCase):
     """
     Test case that starts our test HTTP server.
     """
+    handler = TestHTTPRequestHandler
+
     def setUp(self):
-        self.server = TestHTTPServer()
+        self.server = TestHTTPServer(self.handler)
 
     def tearDown(self):
         self.server.shutdown()
@@ -117,26 +140,40 @@ class TestServerTestCase(unittest.TestCase):
         elif requests < num:
             raise AssertionError('Less than %s request performed' % num)
 
-    def assertMethod(self, method):
+    def assertMethod(self, method, request=-1):
         try:
-            request = self.server.requests[0]
+            request = self.server.requests[request]
         except IndexError:
             raise AssertionError('Cannot assert method without request')
         if request.method != method:
             raise AssertionError('%s is not %s method' % (method,
                                  request.method))
 
-    def assertPath(self, path):
+    def assertPath(self, path, request=-1):
         try:
-            request = self.server.requests[0]
+            request = self.server.requests[request]
         except IndexError:
             raise AssertionError('Cannot assert path without request')
         if request.path != path:
             raise AssertionError('"%s" is not equal to "%s"' % (path,
                                  request.path))
 
+    def assertData(self, key, value, request=-1):
+        try:
+            request = self.server.requests[request]
+        except IndexError:
+            raise AssertionError('Cannot assert data without request')
+        if value not in request.data.get(key, []):
+            raise AssertionError('Request body differs from expectation')
 
-class BasicTestCase(TestServerTestCase):
+
+class ClientTestCase(TestServerTestCase):
+    def setUp(self):
+        super(ClientTestCase, self).setUp()
+        self.client = self.getClient()
+
+
+class BasicTestCase(ClientTestCase):
     def getClient(self, **kwargs):
         kwargs.setdefault('key', API_KEY)
         kwargs.setdefault('password', API_PASSWORD)
@@ -145,7 +182,7 @@ class BasicTestCase(TestServerTestCase):
         return BasicClient(**kwargs)
 
 
-class OAuthTestCase(TestServerTestCase):
+class OAuthTestCase(ClientTestCase):
     def getClient(self, **kwargs):
         kwargs.setdefault('client_token', CLIENT_TOKEN)
         kwargs.setdefault('client_secret', CLIENT_SECRET)
@@ -159,106 +196,91 @@ class OAuthTestCase(TestServerTestCase):
 class UrlGenerationTestCase(object):
     "Tests that validate 'auto-generated' URLs."
     def test_with_path_id(self):
-        client = self.getClient()
-        client.get('/path/data', '/the/file/path')
+        self.client.get('/path/data', '/the/file/path')
         self.assertMethod('GET')
         self.assertPath('/api/{0}/path/data/the/file/path/'.format(
-            client.version))
+            self.client.version))
 
     def test_with_int_id(self):
-        client = self.getClient()
-        client.get('/access/user', 42)
+        self.client.get('/access/user', 42)
         self.assertMethod('GET')
-        self.assertPath('/api/{0}/access/user/42/'.format(client.version))
+        self.assertPath('/api/{0}/access/user/42/'.format(self.client.version))
 
     def test_with_version(self):
-        client = self.getClient(version='3.1')
-        client.get('/ping')
-        self.assertMethod('GET')
-        self.assertPath('/api/{0}/ping/'.format(client.version))
+        for major in xrange(10):
+            for minor in xrange(10):
+                client = self.getClient(version='%s.%s' % (major, minor))
+                client.get('/ping')
+                self.assertMethod('GET')
+                self.assertPath('/api/{0}/ping/'.format(client.version))
 
 
 class MethodTestCase(object):
     "Tests the HTTP methods used by CRUD methods."
     def test_call_is_GET(self):
-        client = self.getClient()
-        client('/user', 'bobafett')
+        self.client('/user', 'bobafett')
         self.assertMethod('GET')
 
     def test_post_is_POST(self):
-        client = self.getClient()
-        client.post('/user', username='bobafett', email='bobafett@example.com')
+        self.client.post('/user', username='bobafett', email='bobafett@example.com')
         self.assertMethod('POST')
 
     def test_get_is_GET(self):
-        client = self.getClient()
-        client.get('/user', 'bobafett')
+        self.client.get('/user', 'bobafett')
         self.assertMethod('GET')
 
     def test_put_is_PUT(self):
-        client = self.getClient()
-        client.put('/user', 'bobafett', full_name='Boba Fett')
+        self.client.put('/user', 'bobafett', full_name='Boba Fett')
         self.assertMethod('PUT')
 
     def test_delete_is_DELETE(self):
-        client = self.getClient()
-        client.delete('/user', 'bobafett')
+        self.client.delete('/user', 'bobafett')
         self.assertMethod('DELETE')
 
 
 class DownloadTestCase(object):
     def test_file_response(self):
-        client = self.getClient()
-        r = client.get('/user')
+        r = self.client.get('/user')
         self.assertTrue(hasattr(r, 'read'), 'File-like object not returned.')
         self.assertEqual(r.read(), 'Hello World!')
 
 
 class UploadTestCase(object):
     def test_file_upload(self):
-        client = self.getClient()
         fd, t = tempfile.mkstemp()
         os.close(fd)
         try:
-            client.post('/path/data', 'foobar.png', file=file(t))
-        except Exception, e:
-            self.fail('POSTing a file failed. %s' % e)
+            self.client.post('/path/data', 'foobar.png', file=file(t))
         finally:
-            try:
-                os.unlink(t)
-            except:
-                pass
+            os.unlink(t)
 
 
-class BasicEnvironTestCase(BasicTestCase):
+class BasicEnvironTestCase(UrlGenerationTestCase, BasicTestCase):
     "Tests that the API client reads settings from ENV."
     def setUp(self):
-        super(BasicEnvironTestCase, self).setUp()
         os.environ['SMARTFILE_API_KEY'] = API_KEY
         os.environ['SMARTFILE_API_PASSWORD'] = API_KEY
+        super(BasicEnvironTestCase, self).setUp()
 
     def tearDown(self):
         super(BasicEnvironTestCase, self).tearDown()
         del os.environ['SMARTFILE_API_KEY']
         del os.environ['SMARTFILE_API_PASSWORD']
 
-    def test_read_from_env(self):
-        # Blank out the credentials, the client should read them from the
-        # environment variables.
-        client = self.getClient(key=None, password=None)
-        client.get('/ping')
-        self.assertMethod('GET')
-        self.assertPath('/api/{0}/ping/'.format(client.version))
+    def getClient(self, **kwargs):
+        kwargs['key'] = None
+        kwargs['password'] = None
+        return super(BasicEnvironTestCase, self).getClient(**kwargs)
 
 
-class OAuthEnvironTestCase(OAuthTestCase):
+class OAuthEnvironTestCase(UrlGenerationTestCase, OAuthTestCase):
     "Tests that the API client reads settings from ENV."
     def setUp(self):
-        super(OAuthEnvironTestCase, self).setUp()
         os.environ['SMARTFILE_CLIENT_TOKEN'] = CLIENT_TOKEN
         os.environ['SMARTFILE_CLIENT_SECRET'] = CLIENT_SECRET
         os.environ['SMARTFILE_ACCESS_TOKEN'] = ACCESS_TOKEN
         os.environ['SMARTFILE_ACCESS_SECRET'] = ACCESS_SECRET
+        super(OAuthEnvironTestCase, self).setUp()
 
     def tearDown(self):
         super(OAuthEnvironTestCase, self).tearDown()
@@ -267,13 +289,10 @@ class OAuthEnvironTestCase(OAuthTestCase):
         del os.environ['SMARTFILE_ACCESS_TOKEN']
         del os.environ['SMARTFILE_ACCESS_SECRET']
 
-    def test_read_from_env(self):
-        # Blank out the credentials, the client should read them from the
-        # environment variables.
-        client = self.getClient(client_token=None, client_secret=None)
-        client.get('/ping')
-        self.assertMethod('GET')
-        self.assertPath('/api/{0}/ping/'.format(client.version))
+    def getClient(self, **kwargs):
+        kwargs['client_token'] = None
+        kwargs['client_secret'] = None
+        return super(OAuthEnvironTestCase, self).getClient(**kwargs)
 
 
 class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
@@ -317,7 +336,7 @@ class OAuthClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
 
 
 class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
-    def respond(self):
+    def respond(self, request):
         self.send_response(503)
         self.send_header("X-Throttle", "throttled; next=0.01 sec")
         self.end_headers()
@@ -325,12 +344,10 @@ class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
 
 
 class ThrottleTestCase(object):
-    def setUp(self):
-        self.server = TestHTTPServer(handler=HTTPThrottleRequestHandler)
+    handler = HTTPThrottleRequestHandler
 
     def test_throttle_GET(self):
-        client = self.getClient()
-        self.assertRaises(RequestError, client.get, '/ping')
+        self.assertRaises(RequestError, self.client.get, '/ping')
         self.assertRequestCount(3)
 
 
@@ -343,7 +360,7 @@ class OAuthThrottleTestCase(ThrottleTestCase, OAuthTestCase):
 
 
 class HTTPJSONRequestHandler(TestHTTPRequestHandler):
-    def respond(self):
+    def respond(self, request):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -351,12 +368,10 @@ class HTTPJSONRequestHandler(TestHTTPRequestHandler):
 
 
 class JSONTestCase(object):
-    def setUp(self):
-        self.server = TestHTTPServer(handler=HTTPJSONRequestHandler)
+    handler = HTTPJSONRequestHandler
 
     def test_throttle_GET(self):
-        client = self.getClient()
-        r = client.get('/user')
+        r = self.client.get('/user')
         self.assertMethod('GET')
         self.assertEqual(r, { 'foo': 'bar' })
 
@@ -366,6 +381,82 @@ class BasicJSONTestCase(JSONTestCase, BasicTestCase):
 
 
 class OAuthJSONTestCase(JSONTestCase, OAuthTestCase):
+    pass
+
+
+class SyncRequestHandler(TestHTTPRequestHandler):
+    def respond(self, request):
+        if '/signature/' in request.path:
+            return self.respond_signature()
+        elif '/delta/' in request.path:
+            return self.respond_delta()
+        elif '/patch/' in request.path:
+            return self.respond_patch()
+        else:
+            return super(SyncRequestHandler, self).respond()
+
+    def respond_signature(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/librsync-signature")
+        self.end_headers()
+        self.wfile.write(SYNC_SIGNATURE)
+
+    def respond_delta(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/librsync-delta")
+        self.end_headers()
+        self.wfile.write(SYNC_DELTA)
+
+    def respond_patch(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({'foo': 'bar'}))
+
+
+class SyncTestCase(object):
+    "Test delta transfer via sync API."
+    handler = SyncRequestHandler
+
+    def getClient(self, **kwargs):
+        "Override to return a sync client that uses the underlying client."
+        client = super(SyncTestCase, self).getClient(**kwargs)
+        return SyncClient(client)
+
+    def test_upload(self):
+        "Ensure we can upload via sync API."
+        fd, t = tempfile.mkstemp()
+        os.write(fd, SYNC_FILE_B)
+        os.close(fd)
+        try:
+            self.client.upload(t, '/unittest/sync')
+        finally:
+            os.unlink(t)
+        self.assertRequestCount(2)
+        self.assertPath('/api/%s/path/sync/signature/unittest/sync/' % self.client.version, request=0)
+        self.assertPath('/api/%s/path/sync/patch/unittest/sync/' % self.client.version, request=1)
+        self.assertData('delta', SYNC_DELTA, request=1)
+
+    def test_download(self):
+        "Ensure we can download via sync API."
+        fd, t = tempfile.mkstemp()
+        os.write(fd, SYNC_FILE_A)
+        os.close(fd)
+        try:
+            self.client.download(t, '/unittest/sync')
+            # The local file contents should have been changed.
+            self.assertEqual(SYNC_FILE_B, file(t).read())
+        finally:
+            os.unlink(t)
+        self.assertRequestCount(1)
+        self.assertPath('/api/%s/path/sync/delta/unittest/sync/' % self.client.version)
+
+
+class BasicSyncTestCase(SyncTestCase, BasicTestCase):
+    pass
+
+
+class OAuthSyncTestCase(SyncTestCase, OAuthTestCase):
     pass
 
 
