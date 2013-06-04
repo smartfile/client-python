@@ -168,6 +168,10 @@ class TestServerTestCase(unittest.TestCase):
             raise AssertionError('Cannot assert data without request')
         self.assertIn(value, request.data.getvalue(key, []))
 
+    def assertIn(self, test_value, expected_set):
+        msg = "%s did not occur in %s" % (test_value, expected_set)
+        self.assert_(test_value in expected_set, msg) 
+
 
 class ClientTestCase(TestServerTestCase):
     def setUp(self):
