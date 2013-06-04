@@ -2,13 +2,14 @@ import re
 import os
 import six
 import time
-import string
 import urllib
+import requests
 try:
     import urlparse
+    # Fixed pyflakes warning...
+    urlparse
 except ImportError:
-    import urllib.parse as urlparse
-import requests
+    from urllib import parse as urlparse
 
 from netrc import netrc
 
