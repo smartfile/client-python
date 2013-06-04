@@ -1,3 +1,4 @@
+import six
 
 
 class APIError(Exception):
@@ -25,9 +26,9 @@ class ResponseError(APIError):
             json = response.json()
         except ValueError:
             if self.status_code == 404:
-                self.detail = u'Invalid URL, check your API path'
+                self.detail = six.u('Invalid URL, check your API path')
             else:
-                self.detail = u'Server error; check response for errors'
+                self.detail = six.u('Server error; check response for errors')
         else:
             if self.status_code == 400 and 'field_errors' in json:
                 self.detail = json['field_errors']

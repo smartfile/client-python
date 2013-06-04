@@ -27,11 +27,11 @@ class LocalFile(BaseFile):
         kwargs = {}
         if block_size:
             kwargs['block_size'] = block_size
-        return librsync.signature(file(self.path, 'rb'), **kwargs)
+        return librsync.signature(open(self.path, 'rb'), **kwargs)
 
     def delta(self, signature):
         "Generates delta for local file using remote signature."
-        return librsync.delta(file(self.path, 'rb'), signature)
+        return librsync.delta(open(self.path, 'rb'), signature)
 
     def patch(self, delta):
         "Applies remote delta to local file."
@@ -42,7 +42,7 @@ class LocalFile(BaseFile):
               dir=os.path.dirname(self.path), delete=False)) as output:
             try:
                 # Open the local file, data may be read from it.
-                with file(self.path, 'rb') as reference:
+                with open(self.path, 'rb') as reference:
                     # Patch the local file into our temporary file.
                     r = librsync.patch(reference, delta, output)
                     os.rename(output.name, self.path)
@@ -50,7 +50,7 @@ class LocalFile(BaseFile):
             finally:
                 try:
                     os.remove(output.name)
-                except OSError, e:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
 

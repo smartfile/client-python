@@ -1,9 +1,13 @@
 import re
 import os
+import six
 import time
 import string
 import urllib
-import urlparse
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 import requests
 
 from netrc import netrc
@@ -26,12 +30,12 @@ HTTP_USER_AGENT = 'SmartFile Python API client v{0}'.format(__version__)
 def clean_tokens(*args):
     if not all(map(bool, args)):
         raise ValueError("not provided")
-    args = map(string.strip, args)
+    args = list(map(lambda x: x.strip(), args))
     for i, arg in enumerate(args):
         if len(arg) < 30:
             raise ValueError("too short")
-        if not isinstance(arg, unicode):
-            arg = unicode(arg)
+        if not isinstance(arg, six.text_type):
+            arg = six.u(arg)
         args[i] = arg
     return args
 
@@ -47,7 +51,7 @@ class Client(object):
         "Actually makes the HTTP request."
         try:
             response = request(url, stream=True, **kwargs)
-        except RequestException, e:
+        except RequestException as e:
             raise RequestError(e)
         else:
             if response.status_code >= 400:
@@ -57,7 +61,7 @@ class Client(object):
             try:
                 # Try to decode as JSON
                 return response.json()
-            except ValueError:
+            except (TypeError, ValueError):
                 # If that fails, return the text.
                 return response.text
         else:
@@ -73,7 +77,7 @@ class Client(object):
         data = kwargs.get('data')
         if data:
             files = {}
-            for name, value in data.items():
+            for name, value in list(data.items()):
                 # Value might be a file-like object (with a read method), or it
                 # might be a (filename, file-like) tuple.
                 if hasattr(value, 'read') or isinstance(value, tuple):
@@ -101,7 +105,7 @@ class Client(object):
             trys += 1
             try:
                 return self._do_request(request, url, **kwargs)
-            except ResponseError, e:
+            except ResponseError as e:
                 if self.throttle_wait and e.status_code == 503:
                     m = THROTTLE_PATTERN.match(e.response.headers.get('x-throttle', ''))
                     if m:
@@ -174,8 +178,8 @@ try:
     class OAuthToken(object):
         "Internal representation of an OAuth (token, secret) tuple."
         def __init__(self, token=None, secret=None):
-            self.token = token and unicode(token)
-            self.secret = secret and unicode(secret)
+            self.token = token and six.u(token)
+            self.secret = secret and six.u(secret)
 
         def __iter__(self):
             yield self.token
@@ -227,7 +231,7 @@ try:
         def get_request_token(self, callback=None):
             "The first step of the OAuth workflow."
             if callback:
-                callback = unicode(callback)
+                callback = six.u(callback)
             oauth = OAuth1(self._client.token,
                            client_secret=self._client.secret,
                            callback_uri=callback,
@@ -253,7 +257,7 @@ try:
             """The final step of the OAuth workflow. After this the client can make
             API calls."""
             if verifier:
-                verifier = unicode(verifier)
+                verifier = six.u(verifier)
             if request is None:
                 if not self.__request.is_valid():
                     raise APIError('You must obtain a request token to request '
@@ -264,7 +268,7 @@ try:
                            client_secret=self._client.secret,
                            resource_owner_key=request.token,
                            resource_owner_secret=request.secret,
-                           verifier=unicode(verifier),
+                           verifier=six.u(verifier),
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)

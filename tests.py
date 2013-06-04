@@ -1,29 +1,36 @@
-# -*- coding: utf-8 -*-
-
 import os
+import six
 import cgi
 import json
 import zlib
 import random
 import base64
 import hashlib
-import urlparse
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 import unittest
 import tempfile
 import threading
 
 from collections import deque
 
-from StringIO import StringIO
+from six import StringIO
 
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
+try:
+    from BaseHTTPServer import HTTPServer
+    from BaseHTTPServer import BaseHTTPRequestHandler
+except ImportError:
+    from http.server import HTTPServer
+    from http.server import BaseHTTPRequestHandler
 
 from smartfile import BasicClient
 from smartfile import OAuthClient
 from smartfile.sync import SyncClient
 from smartfile.errors import APIError
 from smartfile.errors import RequestError
+
 
 API_KEY = '8g1aq1UF2QfZTG47yEVhVLAFqyfDdp'
 API_PASSWORD = '3II3UFD3pBAwy3Rbz8mVWBhJTA2Gvd'
@@ -32,15 +39,15 @@ CLIENT_SECRET = '0I7BV6Bm3Rgfk73LL68vBp0u23KcKr'
 ACCESS_TOKEN = 'hIlkipZNmwIJ28HQtQRcbGuXBePQp5'
 ACCESS_SECRET = 'Scen1dwmVtWhjLpJfnilrfdc5OZWCJ'
 
-SYNC_FILE_A = """This is a test file.
-It will be used with the sync client."""
-SYNC_FILE_B = """It will be used with the sync client.
-This is a test file."""
+SYNC_FILE_A = six.b("""This is a test file.
+It will be used with the sync client.""")
+SYNC_FILE_B = six.b("""It will be used with the sync client.
+This is a test file.""")
 
 # b64encode(librsync.signature(SYNC_FILE_A)):
-SYNC_SIGNATURE = base64.b64decode('cnMBNgAACAAAAAAIFvwbJw0ItorhbKRo')
+SYNC_SIGNATURE = base64.b64decode(six.b('cnMBNgAACAAAAAAIFvwbJw0ItorhbKRo'))
 # b64encode(librsync.delta(SYNC_FILE_B, signature)):
-SYNC_DELTA = base64.b64decode('cnMCNkE6SXQgd2lsbCBiZSB1c2VkIHdpdGggdGhlIHN5bmMgY2xpZW50LgpUaGlzIGlzIGEgdGVzdCBmaWxlLgA=')
+SYNC_DELTA = base64.b64decode(six.b('cnMCNkE6SXQgd2lsbCBiZSB1c2VkIHdpdGggdGhlIHN5bmMgY2xpZW50LgpUaGlzIGlzIGEgdGVzdCBmaWxlLgA='))
 
 
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -49,7 +56,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
     """
     class TestRequest(object):
         def __init__(self, method, path, query=None, data=None, headers=None):
-            self.method = method
+            self.method = method.upper()
             self.path = path
             self.query = query
             self.data = data
@@ -70,7 +77,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write("Hello World!")
+        self.wfile.write(six.b("Hello World!"))
 
     def parse_and_record(self, method):
         urlp = urlparse.urlparse(self.path)
@@ -79,7 +86,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
             l = int(self.headers['Content-Length'])
             ct, params = cgi.parse_header(self.headers['Content-Type'])
             if ct == 'multipart/form-data':
-                data = cgi.parse_multipart(self.rfile, params)
+                data = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={'REQUEST_METHOD': 'POST'})
             else:
                 data = urlparse.parse_qs(self.rfile.read(l))
         request = self.record(method, urlp.path, query=query, data=data)
@@ -145,26 +152,21 @@ class TestServerTestCase(unittest.TestCase):
             request = self.server.requests[request]
         except IndexError:
             raise AssertionError('Cannot assert method without request')
-        if request.method != method:
-            raise AssertionError('%s is not %s method' % (method,
-                                 request.method))
+        self.assertEqual(method.upper(), request.method)
 
     def assertPath(self, path, request=-1):
         try:
             request = self.server.requests[request]
         except IndexError:
             raise AssertionError('Cannot assert path without request')
-        if request.path != path:
-            raise AssertionError('"%s" is not equal to "%s"' % (path,
-                                 request.path))
+        self.assertEqual(path, request.path)
 
     def assertData(self, key, value, request=-1):
         try:
             request = self.server.requests[request]
         except IndexError:
             raise AssertionError('Cannot assert data without request')
-        if value not in request.data.get(key, []):
-            raise AssertionError('Request body differs from expectation')
+        self.assertIn(value, request.data.getvalue(key, []))
 
 
 class ClientTestCase(TestServerTestCase):
@@ -207,8 +209,8 @@ class UrlGenerationTestCase(object):
         self.assertPath('/api/{0}/access/user/42/'.format(self.client.version))
 
     def test_with_version(self):
-        for major in xrange(10):
-            for minor in xrange(10):
+        for major in range(10):
+            for minor in range(10):
                 client = self.getClient(version='%s.%s' % (major, minor))
                 client.get('/ping')
                 self.assertMethod('GET')
@@ -242,7 +244,7 @@ class DownloadTestCase(object):
     def test_file_response(self):
         r = self.client.get('/user')
         self.assertTrue(hasattr(r, 'read'), 'File-like object not returned.')
-        self.assertEqual(r.read(), 'Hello World!')
+        self.assertEqual(r.read(), six.b('Hello World!'))
 
 
 class UploadTestCase(object):
@@ -250,7 +252,7 @@ class UploadTestCase(object):
         fd, t = tempfile.mkstemp()
         os.close(fd)
         try:
-            self.client.post('/path/data', 'foobar.png', file=file(t))
+            self.client.post('/path/data', 'foobar.png', file=open(t, 'rb'))
         finally:
             os.unlink(t)
 
@@ -309,8 +311,8 @@ class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
                     address, port = address
                 else:
                     port = self.server.server_port
-                netrc = "machine 127.0.0.1:%s\n  login %s\n  password %s" % (
-                        port, API_KEY, API_PASSWORD)
+                netrc = six.b("machine 127.0.0.1:%s\n  login %s\n  password %s" % (
+                        port, API_KEY, API_PASSWORD))
                 os.write(fd, netrc)
             finally:
                 os.close(fd)
@@ -340,7 +342,7 @@ class HTTPThrottleRequestHandler(TestHTTPRequestHandler):
         self.send_response(503)
         self.send_header("X-Throttle", "throttled; next=0.01 sec")
         self.end_headers()
-        self.wfile.write("Request Throttled!")
+        self.wfile.write(six.b("Request Throttled!"))
 
 
 class ThrottleTestCase(object):
@@ -364,7 +366,7 @@ class HTTPJSONRequestHandler(TestHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({ 'foo': 'bar' }))
+        self.wfile.write(six.b(json.dumps({ 'foo': 'bar' })))
 
 
 class JSONTestCase(object):
@@ -411,7 +413,7 @@ class SyncRequestHandler(TestHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({'foo': 'bar'}))
+        self.wfile.write(six.b(json.dumps({'foo': 'bar'})))
 
 
 class SyncTestCase(object):
@@ -445,11 +447,12 @@ class SyncTestCase(object):
         try:
             self.client.download(t, '/unittest/sync')
             # The local file contents should have been changed.
-            self.assertEqual(SYNC_FILE_B, file(t).read())
+            self.assertEqual(SYNC_FILE_B, open(t, 'rb').read())
         finally:
             os.unlink(t)
         self.assertRequestCount(1)
         self.assertPath('/api/%s/path/sync/delta/unittest/sync/' % self.client.version)
+        self.assertData('signature', SYNC_SIGNATURE)
 
 
 class BasicSyncTestCase(SyncTestCase, BasicTestCase):

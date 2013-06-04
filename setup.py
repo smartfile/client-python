@@ -2,7 +2,8 @@
 
 import os
 import re
-from distutils.core import setup
+#from distutils.core import setup
+from setuptools import setup
 
 VERSION_PATTERN = re.compile(r'^[^#]*__version__\W*\=\W*["\'](.*)["\']')
 VERSION = None
@@ -12,7 +13,7 @@ def get_path(path):
     return os.path.join(os.path.dirname(__file__), path)
 
 
-with file(get_path('smartfile/__init__.py')) as f:
+with open(get_path('smartfile/__init__.py'), 'rb') as f:
     for line in f.xreadlines():
         m = VERSION_PATTERN.search(line)
         if m:
@@ -25,9 +26,9 @@ if VERSION is None:
 
 
 name = 'smartfile'
-release = '3'
+release = '6'
 versrel = VERSION + '-' + release
-long_description = file(get_path('README.rst')).read()
+long_description = open(get_path('README.rst'), 'rb').read()
 
 
 setup(
@@ -35,7 +36,7 @@ setup(
     version=versrel,
     description='A Python client for the SmartFile API.',
     long_description=long_description,
-    requires=[
+    install_requires=[
         'oauthlib',
         'requests',
         'requests_oauthlib',

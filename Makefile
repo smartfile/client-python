@@ -2,8 +2,8 @@ test:
 	coverage run tests.py
 
 verify:
-	pyflakes -x W smartfile
-	pep8 --exclude=migrations --ignore=E501,E225 smartfile
+	pyflakes smartfile
+	pep8 --ignore=E501,E225 smartfile
 
 install:
 	python setup.py install
@@ -14,4 +14,10 @@ publish:
 
 profile:
 	python profile.py
+
+clean:
+	find . -name *.pyc -delete
+
+distclean: clean
+	rm -rf env
 
