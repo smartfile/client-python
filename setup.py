@@ -13,8 +13,8 @@ def get_path(path):
     return os.path.join(os.path.dirname(__file__), path)
 
 
-with open(get_path('smartfile/__init__.py'), 'rb') as f:
-    for line in f.xreadlines():
+with open(get_path('smartfile/__init__.py'), 'r') as f:
+    for line in f.readlines():
         m = VERSION_PATTERN.search(line)
         if m:
             VERSION = m.group(1)
@@ -26,9 +26,9 @@ if VERSION is None:
 
 
 name = 'smartfile'
-release = '6'
+release = '7'
 versrel = VERSION + '-' + release
-long_description = open(get_path('README.rst'), 'rb').read()
+long_description = open(get_path('README.rst'), 'r').read()
 
 
 setup(
