@@ -172,9 +172,7 @@ try:
     from requests_oauthlib import OAuth1
     from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
 
-    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
-    #                OAuth, if available.
-    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
+    # OAuth, if available.
 
     class OAuthToken(object):
         "Internal representation of an OAuth (token, secret) tuple."
@@ -279,9 +277,7 @@ try:
 
 
 except ImportError:
-    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
-    #              OAuth, if not available.
-    #*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~
+    # OAuth, if not available.
 
     # Instead of a class, define this as a function, thus when a user tries to
     # "instantiate" it, they receive an exception.
