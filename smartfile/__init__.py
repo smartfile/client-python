@@ -1,9 +1,8 @@
-import re
+from netrc import netrc
 import os
-import six
+import re
 import time
 import urllib
-import requests
 try:
     import urlparse
     # Fixed pyflakes warning...
@@ -11,8 +10,8 @@ try:
 except ImportError:
     from urllib import parse as urlparse
 
-from netrc import netrc
 
+import requests
 from requests.exceptions import RequestException
 
 from smartfile.errors import APIError
@@ -35,8 +34,6 @@ def clean_tokens(*args):
     for i, arg in enumerate(args):
         if len(arg) < 30:
             raise ValueError("too short")
-        if not isinstance(arg, six.text_type):
-            arg = six.u(arg)
         args[i] = arg
     return args
 
@@ -177,8 +174,8 @@ try:
     class OAuthToken(object):
         "Internal representation of an OAuth (token, secret) tuple."
         def __init__(self, token=None, secret=None):
-            self.token = token and six.u(token)
-            self.secret = secret and six.u(secret)
+            self.token = token
+            self.secret = secret
 
         def __iter__(self):
             yield self.token
@@ -229,8 +226,6 @@ try:
 
         def get_request_token(self, callback=None):
             "The first step of the OAuth workflow."
-            if callback:
-                callback = six.u(callback)
             oauth = OAuth1(self._client.token,
                            client_secret=self._client.secret,
                            callback_uri=callback,
@@ -255,8 +250,6 @@ try:
         def get_access_token(self, request=None, verifier=None):
             """The final step of the OAuth workflow. After this the client can make
             API calls."""
-            if verifier:
-                verifier = six.u(verifier)
             if request is None:
                 if not self.__request.is_valid():
                     raise APIError('You must obtain a request token to request '
@@ -267,7 +260,7 @@ try:
                            client_secret=self._client.secret,
                            resource_owner_key=request.token,
                            resource_owner_secret=request.secret,
-                           verifier=six.u(verifier),
+                           verifier=verifier,
                            signature_method=SIGNATURE_PLAINTEXT)
             r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
