@@ -126,6 +126,9 @@ class Client(object):
 
     def delete(self, endpoint, id=None, **kwargs):
         return self._request('delete', endpoint, id=id, data=kwargs)
+        
+    def upload(self, usrfile):
+        return self.post('/path/data/', file=usrfile)    
 
 
 class BasicClient(Client):
