@@ -208,9 +208,9 @@ To upload a file, pass either a file-like object or a tuple of
     >>> data = StringIO('StringIO instance has no .name attribute!')
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> api.post('/path/data/', file=('foobar.png', data))
-    >>> # Or use a file-like object with a name attribute
-    >>> api.post('/path/data/', file=file('foobar.png', 'rb'))
+    >>> f = ('foobar.png', data)
+    >>> api.upload(f)
+
 
 Downloading is automatic, if the ``'Content-Type'`` header indicates
 content other than the expected JSON return value, then a file-like object is
@@ -221,9 +221,10 @@ returned.
     >>> import shutil
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> f = api.get('/path/data/', 'foobar.png')
+    >>> f = api.download('foobar.png')
     >>> with file('foobar.png', 'wb') as o:
     >>>     shutil.copyfileobj(f, o)
+
 
 Tasks
 -----
