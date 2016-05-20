@@ -131,7 +131,23 @@ class Client(object):
         return self.post('/path/data/', file=usrfile)  
         
     def download(self, downloadfile):
-        return self.get('/path/data/', downloadfile)      
+        return self.get('/path/data/', downloadfile)
+    
+    def move(self, sourcefile, destination):
+        # check destination folder for / at end
+        if destination[-1:] != "/":
+            raise Exception("Destination folder requires a / at end")
+        # check destination folder for / at begining
+        if destination[:-1] != "/":
+            destination = "/" + destination
+        try:
+            t = self.post('/path/oper/move/', src=sourcefile, dst=destination)
+        except KeyError:
+            raise Exception("Destination directory does not exist")
+        while True:
+            s = self.get('/task', t['uuid'])
+            if s['result']['status'] == 'SUCCESS':
+                break
         
       
 
