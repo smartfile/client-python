@@ -237,7 +237,7 @@ to poll the status of the task.
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> api.move('/foobar.png', 'Folder/')
+    >>> api.move('/foobar.png', '/Folder/')
 
 
 .. _SmartFile: http://www.smartfile.com/
