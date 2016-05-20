@@ -133,9 +133,8 @@ class Client(object):
         # splits tuple to allow ability to remove "/" at the end, if present 
         ourfile, newdata = newtuple
         if ourfile[-1:] == "/":
-             ourfile = ourfile[:-1]
-        newtuple = (ourfile, newdata)
-        return self.post('/path/data/', file=newtuple)  
+             raise Exception("Can only upload files")
+        return self.post('/path/data/', file=usrfile)  
         
     def download(self, downloadfile):
         return self.get('/path/data/', downloadfile)
@@ -155,8 +154,7 @@ class Client(object):
             s = self.get('/task', t['uuid'])
             if s['result']['status'] == 'SUCCESS':
                 break
-        
-      
+           
 
 
 class BasicClient(Client):
