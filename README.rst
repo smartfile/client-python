@@ -237,11 +237,7 @@ to poll the status of the task.
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> t = api.post('/path/oper/move/', src='/foobar.png', dst='/images/foobar.png')
-    >>> while True:
-    >>>     s = api.get('/task', t['uuid'])
-    >>>     if s['status'] == 'SUCCESS':
-    >>>         break
+    >>> api.move('/foobar.png', 'Folder/')
 
 
 .. _SmartFile: http://www.smartfile.com/
