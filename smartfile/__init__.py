@@ -128,7 +128,14 @@ class Client(object):
         return self._request('delete', endpoint, id=id, data=kwargs)
         
     def upload(self, usrfile):
-        return self.post('/path/data/', file=usrfile)  
+        # needed to split the tuple
+        newtuple = usrfile
+        # splits tuple to allow ability to remove "/" at the end, if present 
+        ourfile, newdata = newtuple
+        if ourfile[-1:] == "/":
+             ourfile = ourfile[:-1]
+        newtuple = (ourfile, newdata)
+        return self.post('/path/data/', file=newtuple)  
         
     def download(self, downloadfile):
         return self.get('/path/data/', downloadfile)
