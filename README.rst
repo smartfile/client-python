@@ -233,12 +233,22 @@ Operations are long-running jobs that are not executed within the time frame
 of an API call. For such operations, a task is created, and the API can be used
 to poll the status of the task.
 
+Move files
+
 .. code:: python
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
     >>> api.move('/foobar.png', '/Folder/')
+    
+    
+Delete files
 
+.. code:: python
+
+    >>> from smartfile import BasicClient
+    >>> api = BasicClient()
+    >>> api.delete('/foobar.png')
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html
