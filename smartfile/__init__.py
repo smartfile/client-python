@@ -125,7 +125,10 @@ class Client(object):
         return self._request('post', endpoint, id=id, data=kwargs)
 
     def delete(self, deletefile):
-        return self.post('/path/oper/remove', path=deletefile)
+        try:
+            return self.post('/path/oper/remove', path=deletefile)
+        except KeyError:
+            raise Exception("Destination file does not exist")
         
     def upload(self, usrfile):
         # needed to split the tuple
