@@ -20,23 +20,37 @@ class CustomOperationsTestCase(unittest.TestCase):
         self.api = BasicClient(API_KEY, API_PASSWORD)
         self.txtfile = self.current_dir + "resources/myfile.txt"
         self.uploaddata = None
-    
-    def test_delete(self):
-        
+
+    def clean_up(self):
+        self.api.move("/newFolder/README.rst", "../")
     
     def get_data(self):
         self.uploaddata = self.api.get("/path/info/myfile.txt")
         return self.uploaddata
-    
-    def test_upload_download(self):
+        
+    def upload(self):
         data = open(self.txtfile, "rb")
         newfile = ('myfile.txt', data)
         self.api.upload(newfile)
         self.assertEquals(self.get_data()['size'], os.path.getsize(self.txtfile))
         
-        
+    def download(self): 
         f = self.api.download("myfile.txt")
         self.assertEquals(f.readlines(), open(self.txtfile, "rb").readlines())
     
-    def test_move(self):
+    def move(self):
         self.api.move('README.rst', '/newFolder/')
+        
+    def delete(self):
+        data = open(self.txtfile, "rb")
+        newfile = ('myfile.txt', data)
+        self.api.upload(newfile)
+        self.api.delete("myfile.txt")
+        self.assertRaises(Exception, BasicClient.delete) 
+        
+    def test_upload_download_move_delete_clean_up(self):
+        self.upload()
+        self.download()
+        self.move()
+        self.delete()
+        self.clean_up()
