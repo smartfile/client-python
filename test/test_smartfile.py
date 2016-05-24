@@ -19,12 +19,22 @@ class CustomOperationsTestCase(unittest.TestCase):
         self.current_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
         self.api = BasicClient(API_KEY, API_PASSWORD)
         self.txtfile = self.current_dir + "resources/myfile.txt"
-  
+        self.uploaddata = None
+    
+    def test_delete(self):
+        
+    
+    def get_data(self):
+        self.uploaddata = self.api.get("/path/info/myfile.txt")
+        return self.uploaddata
+    
     def test_upload_download(self):
         data = open(self.txtfile, "rb")
         newfile = ('myfile.txt', data)
         self.api.upload(newfile)
-
+        self.assertEquals(self.get_data()['size'], os.path.getsize(self.txtfile))
+        
+        
         f = self.api.download("myfile.txt")
         self.assertEquals(f.readlines(), open(self.txtfile, "rb").readlines())
     
