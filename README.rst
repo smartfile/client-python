@@ -142,7 +142,7 @@ Authentication using OAuth authentication is bit more complicated, as it involve
     >>> from smartfile import OAuthClient
     >>> api = OAuthClient('**********', '**********')
     >>> # Be sure to only call each method once for each OAuth login
-    >>> 
+    >>>
     >>> # This is the first step with the client, which should be left alone
     >>> api.get_request_token()
     >>> # Redirect users to the following URL:
@@ -199,16 +199,14 @@ File transfers
 
 Uploading and downloading files is supported.
 
-To upload a file, pass either a file-like object or a tuple of
-``(filename, file-like)`` as a kwarg.
+To upload a file, pass a tuple of (filename, fileobject). For example:
 
 .. code:: python
 
-    >>> from StringIO import StringIO
-    >>> data = StringIO('StringIO instance has no .name attribute!')
+    >>> data = file('Song.mp3', 'rb')
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> f = ('foobar.png', data)
+    >>> f = ('Song.mp3', data)
     >>> api.upload(f)
 
 
@@ -240,8 +238,8 @@ Move files
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
     >>> api.move('/foobar.png', '/Folder/')
-    
-    
+
+
 Delete files
 
 .. code:: python

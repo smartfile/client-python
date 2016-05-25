@@ -54,7 +54,8 @@ class Client(object):
         else:
             if response.status_code >= 400:
                 raise ResponseError(response)
-        # Try to return the response in the most useful fashion given it's type.
+        # Try to return the response in the most useful fashion given it's
+        # type.
         if response.headers.get('content-type') == 'application/json':
             try:
                 # Try to decode as JSON
@@ -94,18 +95,21 @@ class Client(object):
             path = path.replace('//', '/')
         url = self.url + path
         # Add our user agent.
-        kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
+        kwargs.setdefault('headers', {}).setdefault('User-Agent',
+                                                    HTTP_USER_AGENT)
         # Now try the request, if we get throttled, sleep and try again.
         trys, retrys = 0, 3
         while True:
             if trys == retrys:
-                raise RequestError('Could not complete request after %s trys.' % trys)
+                raise RequestError('Could not complete request after %s trys.'
+                                   % trys)
             trys += 1
             try:
                 return self._do_request(request, url, **kwargs)
             except ResponseError as e:
                 if self.throttle_wait and e.status_code == 503:
-                    m = THROTTLE_PATTERN.match(e.response.headers.get('x-throttle', ''))
+                    m = THROTTLE_PATTERN.match(
+                        e.response.headers.get('x-throttle', ''))
                     if m:
                         time.sleep(float(m.group(1)))
                         continue
@@ -129,35 +133,29 @@ class Client(object):
             return self.post('/path/oper/remove', path=deletefile)
         except KeyError:
             raise Exception("Destination file does not exist")
-        
+
     def upload(self, usrfile):
-        # needed to split the tuple
-        newtuple = usrfile
-        # splits tuple to allow ability to remove "/" at the end, if present 
-        ourfile, newdata = newtuple
-        if ourfile[-1:] == "/":
-             raise Exception("Can only upload files")
-        return self.post('/path/data/', file=usrfile)  
-        
-    def download(self, downloadfile):
-        return self.get('/path/data/', downloadfile)
-    
+        if usrfile[0].endswith('/'):
+            raise ValueError("File name should have no trailing slash")
+        return self.post('/path/data/', file=usrfile)
+
+    def download(self, file_to_be_downloaded):
+        """ file_to_be_downloaded is a file-like object that has already
+        been uploaded, you cannot download folders """
+        return self.get('/path/data/', file_to_be_downloaded)
+
     def move(self, sourcefile, destination):
         # check destination folder for / at end
-        if destination[-1:] != "/":
-            raise Exception("Destination folder requires a / at end")
+        if destination.endswith("/"):
+            destination = destination + "/"
         # check destination folder for / at begining
-        if destination[:-1] != "/":
+        if destination.startswith("/"):
             destination = "/" + destination
-        try:
-            t = self.post('/path/oper/move/', src=sourcefile, dst=destination)
-        except KeyError:
-            raise Exception("Destination directory does not exist")
+        t = self.post('/path/oper/move/', src=sourcefile, dst=destination)
         while True:
             s = self.get('/task', t['uuid'])
             if s['result']['status'] == 'SUCCESS':
                 break
-           
 
 
 class BasicClient(Client):
@@ -225,10 +223,11 @@ try:
                 return False
 
     class OAuthClient(Client):
-        """API client that uses OAuth tokens. Layers a more complex form of
-        authentication useful for 3rd party access on top of the base Client."""
-        def __init__(self, client_token=None, client_secret=None, access_token=None,
-                     access_secret=None, **kwargs):
+        """API client that uses OAuth tokens. Layers a more complex
+        form of authentication useful for 3rd party access on top of
+        the base Client."""
+        def __init__(self, client_token=None, client_secret=None,
+                     access_token=None, access_secret=None, **kwargs):
             if client_token is None:
                 client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
             if client_secret is None:
@@ -239,15 +238,15 @@ try:
                 access_secret = os.environ.get('SMARTFILE_ACCESS_SECRET')
             self._client = OAuthToken(client_token, client_secret)
             if not self._client.is_valid():
-                raise APIError('You must provide a client_token and client_secret '
-                               'for OAuth.')
+                raise APIError('You must provide a client_token'
+                               'and client_secret for OAuth.')
             self._access = OAuthToken(access_token, access_secret)
             super(OAuthClient, self).__init__(**kwargs)
 
         def _do_request(self, *args, **kwargs):
             if not self._access.is_valid():
-                raise APIError('You must obtain an access token before making API '
-                               'calls.')
+                raise APIError('You must obtain an access token'
+                               'before making API calls.')
             # Add the OAuth parameters.
             kwargs['auth'] = OAuth1(self._client.token,
                                     client_secret=self._client.secret,
@@ -262,30 +261,33 @@ try:
                            client_secret=self._client.secret,
                            callback_uri=callback,
                            signature_method=SIGNATURE_PLAINTEXT)
-            r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
+            r = requests.post(urlparse.urljoin(
+                self.url, 'oauth/request_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
             self.__request = OAuthToken(credentials.get('oauth_token')[0],
-                                        credentials.get('oauth_token_secret')[0])
+                                        credentials.get(
+                                        'oauth_token_secret')[0])
             return self.__request
 
         def get_authorization_url(self, request=None):
             "The second step of the OAuth workflow."
             if request is None:
                 if not self.__request.is_valid():
-                    raise APIError('You must obtain a request token to request '
-                                   'and access token. Use get_request_token() '
-                                   'first.')
+                    raise APIError('You must obtain a request token to'
+                                   'request and access token. Use'
+                                   'get_request_token() first.')
                 request = self.__request
             url = urlparse.urljoin(self.url, 'oauth/authorize/')
-            return url + '?' + urllib.urlencode(dict(oauth_token=request.token))
+            return url + '?' + urllib.urlencode(
+                dict(oauth_token=request.token))
 
         def get_access_token(self, request=None, verifier=None):
-            """The final step of the OAuth workflow. After this the client can make
-            API calls."""
+            """The final step of the OAuth workflow. After this the client
+            can make API calls."""
             if request is None:
                 if not self.__request.is_valid():
-                    raise APIError('You must obtain a request token to request '
-                                   'and access token. Use get_request_token() '
+                    raise APIError('You must obtain a request token to request'
+                                   'and access token. Use get_request_token()'
                                    'first.')
                 request = self.__request
             oauth = OAuth1(self._client.token,
@@ -294,7 +296,8 @@ try:
                            resource_owner_secret=request.secret,
                            verifier=verifier,
                            signature_method=SIGNATURE_PLAINTEXT)
-            r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
+            r = requests.post(urlparse.urljoin(
+                self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
             self._access = OAuthToken(credentials.get('oauth_token')[0],
                                       credentials.get('oauth_token_secret')[0])

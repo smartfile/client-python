@@ -33,7 +33,7 @@ class ResponseError(APIError):
             if self.status_code == 400 and 'field_errors' in json:
                 self.detail = json['field_errors']
             else:
-                self.detail = json['detail']
+                self.detail = json['src'][0]
         super(ResponseError, self).__init__(*args, **kwargs)
 
     def __str__(self):
