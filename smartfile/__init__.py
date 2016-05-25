@@ -131,10 +131,11 @@ class Client(object):
     def delete(self, deletefile):
         return self.post('/path/oper/remove', path=deletefile)
 
-    def upload(self, usrfile):
-        if usrfile[0].endswith('/'):
+    def upload(self, filename, fileobj):
+        if filename.endswith('/'):
             raise ValueError("File name should have no trailing slash")
-        return self.post('/path/data/', file=usrfile)
+        arg = (filename, fileobj)
+        return self.post('/path/data/', file=arg)
 
     def download(self, file_to_be_downloaded):
         """ file_to_be_downloaded is a file-like object that has already
