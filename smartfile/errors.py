@@ -33,7 +33,12 @@ class ResponseError(APIError):
             if self.status_code == 400 and 'field_errors' in json:
                 self.detail = json['field_errors']
             else:
-                self.detail = json['src'][0]
+                try:
+                    # A faulty move request returns the below response
+                    self.detail = json['src'][0]
+                except KeyError:
+                    # A faulty delete request returns the below response
+                    self.detail = json['path'][0]
         super(ResponseError, self).__init__(*args, **kwargs)
 
     def __str__(self):

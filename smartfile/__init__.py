@@ -129,10 +129,7 @@ class Client(object):
         return self._request('post', endpoint, id=id, data=kwargs)
 
     def delete(self, deletefile):
-        try:
-            return self.post('/path/oper/remove', path=deletefile)
-        except KeyError:
-            raise Exception("Destination file does not exist")
+        return self.post('/path/oper/remove', path=deletefile)
 
     def upload(self, usrfile):
         if usrfile[0].endswith('/'):
