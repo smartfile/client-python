@@ -23,8 +23,9 @@ class CustomOperationsTestCase(unittest.TestCase):
     def test_upload_and_download(self):
         # Upload a file, download it, make sure the downloaded version
         # has the same content.
-        f = StringIO('hello there')
+        file_contents = "hello there"
+        f = StringIO(file_contents)
         f.seek(0)
         self.api.upload(TESTFN, f)
         r = self.api.download(TESTFN)
-        self.assertEqual(r.data, 'hello there')
+        self.assertEqual(r.data, file_contents)

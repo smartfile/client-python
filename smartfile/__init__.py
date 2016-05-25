@@ -144,10 +144,10 @@ class Client(object):
 
     def move(self, sourcefile, destination):
         # check destination folder for / at end
-        if destination.endswith("/"):
+        if not destination.endswith("/"):
             destination = destination + "/"
         # check destination folder for / at begining
-        if destination.startswith("/"):
+        if not destination.startswith("/"):
             destination = "/" + destination
         t = self.post('/path/oper/move/', src=sourcefile, dst=destination)
         while True:
