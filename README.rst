@@ -203,8 +203,8 @@ To upload a file, pass a tuple of (filename, fileobject). For example:
 
 .. code:: python
 
-    >>> data = file('Song.mp3', 'rb')
     >>> from smartfile import BasicClient
+    >>> data = file('Song.mp3', 'rb')
     >>> api = BasicClient()
     >>> f = ('Song.mp3', data)
     >>> api.upload(f)
