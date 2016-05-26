@@ -199,15 +199,14 @@ File transfers
 
 Uploading and downloading files is supported.
 
-To upload a file, pass a tuple of (filename, fileobject). For example:
+To upload a file:
 
 .. code:: python
 
     >>> from smartfile import BasicClient
-    >>> data = file('Song.mp3', 'rb')
     >>> api = BasicClient()
-    >>> f = ('Song.mp3', data)
-    >>> api.upload(f)
+    >>> data = file('Song.mp3', 'rb')
+    >>> f = ("Song.mp3", data)
 
 
 Downloading is automatic, if the ``'Content-Type'`` header indicates
