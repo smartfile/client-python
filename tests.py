@@ -47,9 +47,12 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def record(self, method, path, query=None, data=None):
-        request = TestHTTPRequestHandler.TestRequest(method, path, query=query,
+        request = TestHTTPRequestHandler.TestRequest(method,
+                                                     path,
+                                                     query=query,
                                                      data=data,
-                                                     headers=dict(self.headers.items()))
+                                                     headers=dict(
+                                                        self.headers.items()))
         self.server.requests.append(request)
         return request
 
@@ -66,7 +69,8 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
             l = int(self.headers['Content-Length'])
             ct, params = cgi.parse_header(self.headers['Content-Type'])
             if ct == 'multipart/form-data':
-                data = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={'REQUEST_METHOD': 'POST'})
+                data = cgi.FieldStorage(fp=self.rfile, headers=self.headers,
+                                        environ={'REQUEST_METHOD': 'POST'})
             else:
                 data = urlparse.parse_qs(self.rfile.read(l))
         request = self.record(method, urlp.path, query=query, data=data)
@@ -150,7 +154,7 @@ class TestServerTestCase(unittest.TestCase):
 
     def assertIn(self, test_value, expected_set):
         msg = "%s did not occur in %s" % (test_value, expected_set)
-        self.assert_(test_value in expected_set, msg) 
+        self.assert_(test_value in expected_set, msg)
 
 
 class ClientTestCase(TestServerTestCase):
@@ -208,7 +212,8 @@ class MethodTestCase(object):
         self.assertMethod('GET')
 
     def test_post_is_POST(self):
-        self.client.post('/user', username='bobafett', email='bobafett@example.com')
+        self.client.post('/user', username='bobafett',
+                         email='bobafett@example.com')
         self.assertMethod('POST')
 
     def test_get_is_GET(self):
@@ -314,7 +319,8 @@ class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
 class OAuthClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
                           UrlGenerationTestCase, OAuthTestCase):
     def test_blank_client_token(self):
-        self.assertRaises(APIError, self.getClient, client_token='', client_secret='')
+        self.assertRaises(APIError, self.getClient,
+                          client_token='', client_secret='')
 
     def test_blank_access_token(self):
         client = self.getClient(access_token='', access_secret='')
@@ -350,7 +356,7 @@ class HTTPJSONRequestHandler(TestHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(b"%s" % (json.dumps({ 'foo': 'bar' }), ))
+        self.wfile.write(b"%s" % (json.dumps({'foo': 'bar'}), ))
 
 
 class JSONTestCase(object):
@@ -359,7 +365,7 @@ class JSONTestCase(object):
     def test_throttle_GET(self):
         r = self.client.get('/user')
         self.assertMethod('GET')
-        self.assertEqual(r, { 'foo': 'bar' })
+        self.assertEqual(r, {'foo': 'bar'})
 
 
 class BasicJSONTestCase(JSONTestCase, BasicTestCase):

@@ -1,15 +1,16 @@
-from netrc import netrc
 import os
 import re
+import shutil
 import time
 import urllib
+
+from netrc import netrc
 try:
     import urlparse
     # Fixed pyflakes warning...
     urlparse
 except ImportError:
     from urllib import parse as urlparse
-
 
 import requests
 from requests.exceptions import RequestException
@@ -142,7 +143,9 @@ class Client(object):
         been uploaded, you cannot download folders """
         # no need to change download because it uses shutil.copyfileobj to
         # download, which copies the data in chunks
-        return self.get('/path/data/', file_to_be_downloaded)
+        o = file(file_to_be_downloaded, 'wb')
+        return shutil.copyfileobj(self.get('/path/data/',
+                                  file_to_be_downloaded), o)
 
     def move(self, sourcefile, destination):
         # check destination folder for / at end

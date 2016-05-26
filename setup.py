@@ -2,7 +2,7 @@
 
 import os
 import re
-#from distutils.core import setup
+# from distutils.core import setup
 from setuptools import setup
 
 VERSION_PATTERN = re.compile(r'^[^#]*__version__\W*\=\W*["\'](.*)["\']')
@@ -40,6 +40,7 @@ setup(
         'oauthlib',
         'requests',
         'requests_oauthlib',
+        'requests-toolbelt'
     ],
     author='SmartFile',
     author_email='tech@smartfile.com',
