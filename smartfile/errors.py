@@ -29,7 +29,6 @@ class ResponseError(APIError):
                 self.detail = six.u('Invalid URL, check your API path')
             else:
                 self.detail = six.u('Server error; check response for errors')
-                print self.response.text
         else:
             if self.status_code == 400 and 'field_errors' in json:
                 self.detail = json['field_errors']
