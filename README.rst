@@ -215,12 +215,9 @@ returned.
 
 .. code:: python
 
-    >>> import shutil
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
     >>> f = api.download('foobar.png')
-    >>> with file('foobar.png', 'wb') as o:
-    >>>     shutil.copyfileobj(f, o)
 
 
 Tasks
@@ -236,7 +233,7 @@ Move files
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> api.move('/foobar.png', '/Folder/')
+    >>> api.move('myfile.txt', '/Folder/')
 
 
 Delete files
@@ -245,7 +242,7 @@ Delete files
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> api.delete('/foobar.png')
+    >>> api.delete('foobar.png')
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html
