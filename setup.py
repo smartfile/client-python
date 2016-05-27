@@ -40,7 +40,6 @@ setup(
         'oauthlib',
         'requests',
         'requests_oauthlib',
-        'requests-toolbelt'
     ],
     author='SmartFile',
     author_email='tech@smartfile.com',

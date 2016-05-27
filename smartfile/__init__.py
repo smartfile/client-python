@@ -141,8 +141,8 @@ class Client(object):
     def download(self, file_to_be_downloaded):
         """ file_to_be_downloaded is a file-like object that has already
         been uploaded, you cannot download folders """
-        # no need to change download because it uses shutil.copyfileobj to
-        # download, which copies the data in chunks
+        # download uses shutil.copyfileobj to download, which copies
+        # the data in chunks
         o = file(file_to_be_downloaded, 'wb')
         return shutil.copyfileobj(self.get('/path/data/',
                                   file_to_be_downloaded), o)
