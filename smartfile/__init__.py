@@ -143,7 +143,7 @@ class Client(object):
         been uploaded, you cannot download folders """
         # download uses shutil.copyfileobj to download, which copies
         # the data in chunks
-        o = file(file_to_be_downloaded, 'wb')
+        o = open(file_to_be_downloaded, 'wb')
         return shutil.copyfileobj(self.get('/path/data/',
                                   file_to_be_downloaded), o)
 
