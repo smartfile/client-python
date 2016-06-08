@@ -205,8 +205,8 @@ To upload a file:
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> data = file('Song.mp3', 'rb')
-    >>> f = ("Song.mp3", data)
+    >>> data = file('test.txt', 'rb')
+    >>> api.upload('test.txt', data)
 
 
 Downloading is automatic, if the ``'Content-Type'`` header indicates
@@ -217,7 +217,7 @@ returned.
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> f = api.download('foobar.png')
+    >>> api.download('foobar.png')
 
 
 Tasks
