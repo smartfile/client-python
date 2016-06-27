@@ -231,16 +231,25 @@ Move files
 
 .. code:: python
 
+    >>> import logging
     >>> from smartfile import BasicClient
+    >>>
     >>> api = BasicClient()
-    >>> api.move('myfile.txt', '/Folder/')
+    >>>
+    >>> LOGGER = logging.getLogger(__name__)
+    >>> LOGGER.setLevel(logging.INFO)
+    >>>
+    >>> api.move('file.txt', '/newFolder')
+    >>>
     >>> while True:
     >>>     try:
-    >>>         s = self.get('/task', api['uuid'])
+    >>>         s = api.get('/task', api['uuid'])
     >>>         # Sleep to assure the server doesn't get overloaded
     >>>         time.sleep(1)
     >>>         if s['result']['status'] == 'SUCCESS':
     >>>             break
+    >>>         elif s['result']['status'] == 'FAILURE':
+    >>>             LOGGER.info("Task failure: " + s['uuid'])
     >>>     except Exception as e:
     >>>         print e
     >>>         break
