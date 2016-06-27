@@ -147,14 +147,14 @@ class Client(object):
         return shutil.copyfileobj(self.get('/path/data/',
                                   file_to_be_downloaded), o)
 
-    def move(self, sourcefile, destination):
+    def move(self, src_path, dst_path):
         # check destination folder for / at end
-        if not destination.endswith("/"):
-            destination = destination + "/"
+        if not dst_path.endswith("/"):
+            dst_path = dst_path + "/"
         # check destination folder for / at begining
-        if not destination.startswith("/"):
-            destination = "/" + destination
-        t = self.post('/path/oper/move/', src=sourcefile, dst=destination)
+        if not dst_path.startswith("/"):
+            dst_path = "/" + dst_path
+        t = self.post('/path/oper/move/', src=src_path, dst=dst_path)
         while True:
             s = self.get('/task', t['uuid'])
             if s['result']['status'] == 'SUCCESS':
