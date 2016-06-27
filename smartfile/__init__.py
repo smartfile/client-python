@@ -154,11 +154,7 @@ class Client(object):
         # check destination folder for / at begining
         if not dst_path.startswith("/"):
             dst_path = "/" + dst_path
-        t = self.post('/path/oper/move/', src=src_path, dst=dst_path)
-        while True:
-            s = self.get('/task', t['uuid'])
-            if s['result']['status'] == 'SUCCESS':
-                break
+        return self.post('/path/oper/move/', src=src_path, dst=dst_path)
 
 
 class BasicClient(Client):

@@ -234,6 +234,16 @@ Move files
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
     >>> api.move('myfile.txt', '/Folder/')
+    >>> while True:
+    >>>     try:
+    >>>         s = self.get('/task', api['uuid'])
+    >>>         # Sleep to assure the server doesn't get overloaded
+    >>>         time.sleep(1)
+    >>>         if s['result']['status'] == 'SUCCESS':
+    >>>             break
+    >>>     except Exception as e:
+    >>>         print e
+    >>>         break
 
 
 Delete files
