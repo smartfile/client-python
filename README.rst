@@ -261,7 +261,7 @@ Delete files
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> api.delete('foobar.png')
+    >>> api.remove('foobar.png')
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html

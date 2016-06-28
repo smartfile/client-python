@@ -47,12 +47,15 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def record(self, method, path, query=None, data=None):
-        request = TestHTTPRequestHandler.TestRequest(method,
-                                                     path,
-                                                     query=query,
-                                                     data=data,
-                                                     headers=dict(
-                                                        self.headers.items()))
+        request = TestHTTPRequestHandler.TestRequest(
+            method,
+            path,
+            query=query,
+            data=data,
+            headers=dict(
+                self.headers.items()
+            )
+        )
         self.server.requests.append(request)
         return request
 

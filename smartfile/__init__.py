@@ -129,8 +129,15 @@ class Client(object):
     def post(self, endpoint, id=None, **kwargs):
         return self._request('post', endpoint, id=id, data=kwargs)
 
-    def delete(self, deletefile):
-        return self.post('/path/oper/remove', path=deletefile)
+    def delete(self, endpoint, id=None, **kwargs):
+        return self._request('delete', endpoint, id=id, data=kwargs)
+
+    def remove(self, deletefile):
+        try:
+            return self.post('/path/oper/remove', path=deletefile)
+        except KeyError:
+            raise Exception("Destination file does not exist")
+        # return self.post('/path/oper/remove', path=deletefile)
 
     def upload(self, filename, fileobj):
         if filename.endswith('/'):
@@ -149,18 +156,18 @@ class Client(object):
 
     def move(self, src_path, dst_path):
         # check destination folder for / at end
-        if not dst_path.endswith("/"):
-            dst_path = dst_path + "/"
-        # check destination folder for / at begining
-        if not dst_path.startswith("/"):
-            dst_path = "/" + dst_path
-        # check destination folder for / at end
         if not src_path.endswith("/"):
             src_path = src_path + "/"
         # check destination folder for / at begining
         if not src_path.startswith("/"):
             src_path = "/" + src_path
         return self.post('/path/oper/move/', src=src_path, dst=dst_path)
+        # check destination folder for / at end
+        if not dst_path.endswith("/"):
+            dst_path = dst_path + "/"
+        # check destination folder for / at begining
+        if not dst_path.startswith("/"):
+            dst_path = "/" + dst_path
 
 
 class BasicClient(Client):

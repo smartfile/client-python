@@ -2,6 +2,7 @@ import os
 import unittest
 
 from smartfile import BasicClient
+from smartfile.errors import ResponseError
 
 API_KEY = os.environ.get("API_KEY")
 API_PASSWORD = os.environ.get("API_PASSWORD")
@@ -27,21 +28,22 @@ class CustomOperationsTestCase(unittest.TestCase):
 
     def upload(self):
         data = open(self.txtfile, "rb")
-        self.api.upload('myfile.txt', data)
+        self.api.upload(self.txtfile, data)
         self.assertEquals(self.get_data()['size'],
                           os.path.getsize(self.txtfile))
 
     def download(self):
         self.api.download("myfile.txt")
-        f = open('myfile.txt', 'rb')
-        self.assertEquals(f.readlines(), open(self.txtfile, "rb").readlines())
+        self.assertEquals(os.path.getsize(self.txtfile),
+                          self.get_data()['size'])
 
     def move(self):
         self.api.move('myfile.txt', '/newFolder/')
 
-    def delete(self):
-        self.api.delete("/newFolder/myfile.txt")
-        self.assertRaises(Exception, BasicClient.delete)
+    def remove(self):
+        self.api.remove("/newFolder/myfile.txt")
+        with self.assertRaises(ResponseError):
+            self.api.remove("/newFolder/myfile.txt")
 
     def test_upload_download_move_delete(self):
         self.upload()
