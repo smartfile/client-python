@@ -205,8 +205,8 @@ To upload a file:
 
     >>> from smartfile import BasicClient
     >>> api = BasicClient()
-    >>> data = open('test.txt', 'rb')
-    >>> api.upload('test.txt', data)
+    >>> file = open('test.txt', 'rb')
+    >>> api.upload('test.txt', file)
 
 
 Downloading is automatic, if the ``'Content-Type'`` header indicates

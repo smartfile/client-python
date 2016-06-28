@@ -134,7 +134,7 @@ class Client(object):
 
     def upload(self, filename, fileobj):
         if filename.endswith('/'):
-            raise ValueError("File name should have no trailing slash")
+            filename = filename[:-1]
         arg = (filename, fileobj)
         return self.post('/path/data/', file=arg)
 
@@ -154,6 +154,12 @@ class Client(object):
         # check destination folder for / at begining
         if not dst_path.startswith("/"):
             dst_path = "/" + dst_path
+        # check destination folder for / at end
+        if not src_path.endswith("/"):
+            src_path = src_path + "/"
+        # check destination folder for / at begining
+        if not src_path.startswith("/"):
+            src_path = "/" + src_path
         return self.post('/path/oper/move/', src=src_path, dst=dst_path)
 
 
