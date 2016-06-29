@@ -268,10 +268,12 @@ Delete files
 
 
 
-Running the Tests
+Running Tests
 --------------
 To run tests for the test.py file:
-`nosetests -v tests.py`
+::
+    nosetests -v tests.py
 
 To run tests for the test_smartfile.py file:
-`API_KEY='****' API_PASSWORD='****' nosetests test`
+::
+    API_KEY='****' API_PASSWORD='****' nosetests test
