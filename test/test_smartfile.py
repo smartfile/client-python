@@ -19,11 +19,9 @@ if API_PASSWORD is None:
 class CustomOperationsTestCase(unittest.TestCase):
 
     def setUp(self):
-        # self.current_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
         self.api = BasicClient(API_KEY, API_PASSWORD)
         # Make directory for tests
         self.api.post('/path/oper/mkdir/', path='/testfn2')
-        # self.txtfile = self.current_dir + "myfile.txt"
 
     def get_data(self):
         data = self.api.get("/path/info/testfn")
@@ -39,21 +37,13 @@ class CustomOperationsTestCase(unittest.TestCase):
         f.seek(0)
         self.api.upload(TESTFN, f)
         self.assertEquals(self.get_data()['size'], f.len)
-        # data = open(self.txtfile, "rb")
-        # self.api.upload(self.txtfile, data)
-        # self.assertEquals(self.get_data()['size'],
-        #                   os.path.getsize(self.txtfile))
 
     def download(self):
         self.api.download('testfn')
         self.assertEquals(self.get_data()['size'], os.path.getsize('testfn'))
-        # self.api.download("myfile.txt")
-        # self.assertEquals(os.path.getsize(self.txtfile),
-        #                   self.get_data()['size'])
 
     def move(self):
         self.api.move('testfn', '/testfn2/')
-        # self.api.move('myfile.txt', '/newFolder/')
 
     def remove(self):
         self.api.remove("/testfn2/testfn")
