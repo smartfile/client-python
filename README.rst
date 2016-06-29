@@ -265,3 +265,13 @@ Delete files
 
 .. _SmartFile: http://www.smartfile.com/
 .. _Read more: http://www.smartfile.com/open-source.html
+
+
+
+Running the Tests
+--------------
+To run tests for the test.py file:
+`nosetests -v tests.py`
+
+To run tests for the test_smartfile.py file:
+`API_KEY='****' API_PASSWORD='****' nosetests test`
