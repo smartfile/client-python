@@ -137,7 +137,6 @@ class Client(object):
             return self.post('/path/oper/remove', path=deletefile)
         except KeyError:
             raise Exception("Destination file does not exist")
-        # return self.post('/path/oper/remove', path=deletefile)
 
     def upload(self, filename, fileobj):
         if filename.endswith('/'):
@@ -161,13 +160,13 @@ class Client(object):
         # check destination folder for / at begining
         if not src_path.startswith("/"):
             src_path = "/" + src_path
-        return self.post('/path/oper/move/', src=src_path, dst=dst_path)
         # check destination folder for / at end
         if not dst_path.endswith("/"):
             dst_path = dst_path + "/"
         # check destination folder for / at begining
         if not dst_path.startswith("/"):
             dst_path = "/" + dst_path
+        return self.post('/path/oper/move/', src=src_path, dst=dst_path)
 
 
 class BasicClient(Client):
