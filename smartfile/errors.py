@@ -38,7 +38,10 @@ class ResponseError(APIError):
                     self.detail = json['src'][0]
                 except KeyError:
                     # A faulty delete request returns the below response
-                    self.detail = json['path'][0]
+                    try:
+                        self.detail = json['path'][0]
+                    except KeyError:
+                        self.detail = six.u('Error: %s' % response.content)
         super(ResponseError, self).__init__(*args, **kwargs)
 
     def __str__(self):
