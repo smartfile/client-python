@@ -297,8 +297,8 @@ try:
             can make API calls."""
             if request is None:
                 if not self.__request.is_valid():
-                    raise APIError('You must obtain a request token to request'
-                                   'and access token. Use get_request_token()'
+                    raise APIError('You must obtain a request token to request '
+                                   'and access token. Use get_request_token() '
                                    'first.')
                 request = self.__request
             oauth = OAuth1(self._client.token,

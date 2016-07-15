@@ -244,7 +244,7 @@ Move files
     >>> while True:
     >>>     try:
     >>>         s = api.get('/task', api['uuid'])
-    >>>         # Sleep to assure the server doesn't get overloaded
+    >>>         # Sleep to assure the user does not get rate limited
     >>>         time.sleep(1)
     >>>         if s['result']['status'] == 'SUCCESS':
     >>>             break
