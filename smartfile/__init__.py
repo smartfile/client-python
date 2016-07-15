@@ -1,15 +1,16 @@
-from netrc import netrc
 import os
 import re
+import shutil
 import time
 import urllib
+
+from netrc import netrc
 try:
     import urlparse
     # Fixed pyflakes warning...
     urlparse
 except ImportError:
     from urllib import parse as urlparse
-
 
 import requests
 from requests.exceptions import RequestException
@@ -54,7 +55,8 @@ class Client(object):
         else:
             if response.status_code >= 400:
                 raise ResponseError(response)
-        # Try to return the response in the most useful fashion given it's type.
+        # Try to return the response in the most useful fashion given it's
+        # type.
         if response.headers.get('content-type') == 'application/json':
             try:
                 # Try to decode as JSON
@@ -94,18 +96,21 @@ class Client(object):
             path = path.replace('//', '/')
         url = self.url + path
         # Add our user agent.
-        kwargs.setdefault('headers', {}).setdefault('User-Agent', HTTP_USER_AGENT)
+        kwargs.setdefault('headers', {}).setdefault('User-Agent',
+                                                    HTTP_USER_AGENT)
         # Now try the request, if we get throttled, sleep and try again.
         trys, retrys = 0, 3
         while True:
             if trys == retrys:
-                raise RequestError('Could not complete request after %s trys.' % trys)
+                raise RequestError('Could not complete request after %s trys.'
+                                   % trys)
             trys += 1
             try:
                 return self._do_request(request, url, **kwargs)
             except ResponseError as e:
                 if self.throttle_wait and e.status_code == 503:
-                    m = THROTTLE_PATTERN.match(e.response.headers.get('x-throttle', ''))
+                    m = THROTTLE_PATTERN.match(
+                        e.response.headers.get('x-throttle', ''))
                     if m:
                         time.sleep(float(m.group(1)))
                         continue
@@ -126,6 +131,42 @@ class Client(object):
 
     def delete(self, endpoint, id=None, **kwargs):
         return self._request('delete', endpoint, id=id, data=kwargs)
+
+    def remove(self, deletefile):
+        try:
+            return self.post('/path/oper/remove', path=deletefile)
+        except KeyError:
+            raise Exception("Destination file does not exist")
+
+    def upload(self, filename, fileobj):
+        if filename.endswith('/'):
+            filename = filename[:-1]
+        arg = (filename, fileobj)
+        return self.post('/path/data/', file=arg)
+
+    def download(self, file_to_be_downloaded):
+        """ file_to_be_downloaded is a file-like object that has already
+        been uploaded, you cannot download folders """
+        # download uses shutil.copyfileobj to download, which copies
+        # the data in chunks
+        o = open(file_to_be_downloaded, 'wb')
+        return shutil.copyfileobj(self.get('/path/data/',
+                                  file_to_be_downloaded), o)
+
+    def move(self, src_path, dst_path):
+        # check destination folder for / at end
+        if not src_path.endswith("/"):
+            src_path = src_path + "/"
+        # check destination folder for / at begining
+        if not src_path.startswith("/"):
+            src_path = "/" + src_path
+        # check destination folder for / at end
+        if not dst_path.endswith("/"):
+            dst_path = dst_path + "/"
+        # check destination folder for / at begining
+        if not dst_path.startswith("/"):
+            dst_path = "/" + dst_path
+        return self.post('/path/oper/move/', src=src_path, dst=dst_path)
 
 
 class BasicClient(Client):
@@ -193,10 +234,11 @@ try:
                 return False
 
     class OAuthClient(Client):
-        """API client that uses OAuth tokens. Layers a more complex form of
-        authentication useful for 3rd party access on top of the base Client."""
-        def __init__(self, client_token=None, client_secret=None, access_token=None,
-                     access_secret=None, **kwargs):
+        """API client that uses OAuth tokens. Layers a more complex
+        form of authentication useful for 3rd party access on top of
+        the base Client."""
+        def __init__(self, client_token=None, client_secret=None,
+                     access_token=None, access_secret=None, **kwargs):
             if client_token is None:
                 client_token = os.environ.get('SMARTFILE_CLIENT_TOKEN')
             if client_secret is None:
@@ -207,15 +249,15 @@ try:
                 access_secret = os.environ.get('SMARTFILE_ACCESS_SECRET')
             self._client = OAuthToken(client_token, client_secret)
             if not self._client.is_valid():
-                raise APIError('You must provide a client_token and client_secret '
-                               'for OAuth.')
+                raise APIError('You must provide a client_token'
+                               'and client_secret for OAuth.')
             self._access = OAuthToken(access_token, access_secret)
             super(OAuthClient, self).__init__(**kwargs)
 
         def _do_request(self, *args, **kwargs):
             if not self._access.is_valid():
-                raise APIError('You must obtain an access token before making API '
-                               'calls.')
+                raise APIError('You must obtain an access token'
+                               'before making API calls.')
             # Add the OAuth parameters.
             kwargs['auth'] = OAuth1(self._client.token,
                                     client_secret=self._client.secret,
@@ -230,26 +272,29 @@ try:
                            client_secret=self._client.secret,
                            callback_uri=callback,
                            signature_method=SIGNATURE_PLAINTEXT)
-            r = requests.post(urlparse.urljoin(self.url, 'oauth/request_token/'), auth=oauth)
+            r = requests.post(urlparse.urljoin(
+                self.url, 'oauth/request_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
             self.__request = OAuthToken(credentials.get('oauth_token')[0],
-                                        credentials.get('oauth_token_secret')[0])
+                                        credentials.get(
+                                        'oauth_token_secret')[0])
             return self.__request
 
         def get_authorization_url(self, request=None):
             "The second step of the OAuth workflow."
             if request is None:
                 if not self.__request.is_valid():
-                    raise APIError('You must obtain a request token to request '
-                                   'and access token. Use get_request_token() '
-                                   'first.')
+                    raise APIError('You must obtain a request token to'
+                                   'request and access token. Use'
+                                   'get_request_token() first.')
                 request = self.__request
             url = urlparse.urljoin(self.url, 'oauth/authorize/')
-            return url + '?' + urllib.urlencode(dict(oauth_token=request.token))
+            return url + '?' + urllib.urlencode(
+                dict(oauth_token=request.token))
 
         def get_access_token(self, request=None, verifier=None):
-            """The final step of the OAuth workflow. After this the client can make
-            API calls."""
+            """The final step of the OAuth workflow. After this the client
+            can make API calls."""
             if request is None:
                 if not self.__request.is_valid():
                     raise APIError('You must obtain a request token to request '
@@ -262,7 +307,8 @@ try:
                            resource_owner_secret=request.secret,
                            verifier=verifier,
                            signature_method=SIGNATURE_PLAINTEXT)
-            r = requests.post(urlparse.urljoin(self.url, 'oauth/access_token/'), auth=oauth)
+            r = requests.post(urlparse.urljoin(
+                self.url, 'oauth/access_token/'), auth=oauth)
             credentials = urlparse.parse_qs(r.text)
             self._access = OAuthToken(credentials.get('oauth_token')[0],
                                       credentials.get('oauth_token_secret')[0])
