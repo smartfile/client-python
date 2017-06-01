@@ -25,14 +25,12 @@ if VERSION is None:
 
 
 name = 'smartfile'
-release = '7'
-versrel = VERSION + '-' + release
 long_description = open(get_path('README.rst'), 'r').read()
 
 
 setup(
     name=name,
-    version=versrel,
+    version=VERSION,
     description='A Python client for the SmartFile API.',
     long_description=long_description,
     install_requires=[
