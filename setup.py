@@ -7,6 +7,11 @@ from setuptools import setup
 VERSION_PATTERN = re.compile(r'^[^#]*__version__\W*\=\W*["\'](.*)["\']')
 VERSION = None
 
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+
+required = [r for r in required if not r.startswith('git')]
+
 
 def get_path(path):
     return os.path.join(os.path.dirname(__file__), path)
@@ -33,11 +38,7 @@ setup(
     version=VERSION,
     description='A Python client for the SmartFile API.',
     long_description=long_description,
-    install_requires=[
-        'oauthlib',
-        'requests',
-        'requests_oauthlib',
-    ],
+    install_requires=required,
     author='SmartFile',
     author_email='tech@smartfile.com',
     maintainer='Ben Timby',
