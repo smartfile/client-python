@@ -6,10 +6,10 @@ python:
 before_install:
   - sudo apt-get install librsync1 -qq
 install:
-  - pip install --timeout=30 pep8 --use-mirrors
-  - pip install --timeout=30 pyflakes --use-mirrors
-  - pip install --timeout=30 -r requirements.txt --use-mirrors
-  - pip install --timeout=30 -q -e . --use-mirrors
+  - pip install --timeout=30 pep8
+  - pip install --timeout=30 pyflakes
+  - pip install --timeout=30 -r requirements.txt
+  - pip install --timeout=30 -q -e .
 before_script:
   - make verify
 script:
