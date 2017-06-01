@@ -21,6 +21,7 @@ from smartfile.errors import ResponseError
 
 
 __version__ = '2.18'
+__major__ = __version__.split('.')[0]
 
 API_URL = 'https://app.smartfile.com/'
 
@@ -41,7 +42,7 @@ def clean_tokens(*args):
 
 class Client(object):
     """Base API client, handles communication, retry, versioning etc."""
-    def __init__(self, url=None, version=__version__, throttle_wait=True):
+    def __init__(self, url=None, version=__major__, throttle_wait=True):
         self.url = url or os.environ.get('SMARTFILE_API_URL') or API_URL
         self.version = version
         self.throttle_wait = throttle_wait
