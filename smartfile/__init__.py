@@ -20,7 +20,7 @@ from smartfile.errors import RequestError
 from smartfile.errors import ResponseError
 
 
-__version__ = '2.1'
+__version__ = '2.18'
 
 API_URL = 'https://app.smartfile.com/'
 
