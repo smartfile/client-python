@@ -1,6 +1,12 @@
+from __future__ import absolute_import
+
 import os
 import unittest
-from StringIO import StringIO
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 from smartfile import BasicClient
 from smartfile.errors import ResponseError
