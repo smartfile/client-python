@@ -304,7 +304,8 @@ class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
                 else:
                     port = self.server.server_port
                 netrc = b"machine 127.0.0.1:%i\n  login %s\n  password %s" % (
-                        port, API_KEY.encode(), API_PASSWORD.encode())
+                        port, API_KEY.encode('utf8'),
+                        API_PASSWORD.encode('utf8'))
                 os.write(fd, netrc)
             finally:
                 os.close(fd)
@@ -359,7 +360,7 @@ class HTTPJSONRequestHandler(TestHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(b"%s" % (json.dumps({'foo': 'bar'}).encode(), ))
+        self.wfile.write(json.dumps({'foo': 'bar'}).encode('utf8'))
 
 
 class JSONTestCase(object):
