@@ -303,9 +303,9 @@ class BasicClientTestCase(DownloadTestCase, UploadTestCase, MethodTestCase,
                     address, port = address
                 else:
                     port = self.server.server_port
-                netrc = b"machine 127.0.0.1:%i\n  login %s\n  password %s" % (
-                        port, API_KEY.encode('utf8'),
-                        API_PASSWORD.encode('utf8'))
+                netrc = 'machine 127.0.0.1:%i\n  login %s\n  password %s' % (
+                        port, API_KEY, API_PASSWORD)
+                netrc = netrc.encode('utf8')
                 os.write(fd, netrc)
             finally:
                 os.close(fd)
