@@ -44,7 +44,7 @@ class CustomOperationsTestCase(unittest.TestCase):
         f = StringIO(file_contents)
         f.seek(0)
         self.api.upload(TESTFN, f)
-        self.assertEquals(self.get_data()['size'], f.len)
+        self.assertEquals(self.get_data()['size'], f.tell())
 
     def download(self):
         self.api.download(TESTFN)
