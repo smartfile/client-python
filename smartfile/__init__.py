@@ -67,7 +67,10 @@ class Client(object):
                 return response.text
         else:
             # This might be a file, so return it.
-            return response.raw
+            if kwargs.get('params', {}).get('raw', True):
+                return response.raw
+            else:
+                return response
 
     def _request(self, method, endpoint, id=None, **kwargs):
         "Handles retrying failed requests and error handling."
@@ -145,14 +148,19 @@ class Client(object):
         arg = (filename, fileobj)
         return self.post('/path/data/', file=arg)
 
-    def download(self, file_to_be_downloaded):
+    def download(self, file_to_be_downloaded, perform_download=True):
         """ file_to_be_downloaded is a file-like object that has already
         been uploaded, you cannot download folders """
+        response = self.get(
+            '/path/data/', file_to_be_downloaded, raw=False)
+        if not perform_download:
+            # The caller can decide how to process the download of the data
+            return response
+
         # download uses shutil.copyfileobj to download, which copies
         # the data in chunks
         o = open(file_to_be_downloaded, 'wb')
-        return shutil.copyfileobj(self.get('/path/data/',
-                                  file_to_be_downloaded), o)
+        return shutil.copyfileobj(response.raw, o)
 
     def move(self, src_path, dst_path):
         # check destination folder for / at end

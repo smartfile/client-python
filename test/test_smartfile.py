@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import os
+import requests
 import unittest
 
 try:
@@ -47,6 +48,8 @@ class CustomOperationsTestCase(unittest.TestCase):
         self.assertEquals(self.get_data()['size'], f.tell())
 
     def download(self):
+        response = self.api.download(TESTFN, False)
+        self.assertTrue(isinstance(response, requests.Response))
         self.api.download(TESTFN)
         self.assertEquals(self.get_data()['size'], os.path.getsize(TESTFN))
 
