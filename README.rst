@@ -12,13 +12,9 @@ uses and contributes to Open Source software.
     :target: https://coveralls.io/r/smartfile/client-python
     :alt: Code Coverage
 
-.. image:: https://pypip.in/v/smartfile/badge.png
-    :target: https://crate.io/packages/smartfile/
+.. image:: https://badge.fury.io/py/smartfile.svg
+    :target: https://badge.fury.io/py/smartfile
     :alt: Latest PyPI version
-
-.. image:: https://pypip.in/d/smartfile/badge.png
-    :target: https://crate.io/packages/smartfile/
-    :alt: Number of PyPI downloads
 
 Summary
 ------------
