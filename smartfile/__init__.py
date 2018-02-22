@@ -160,7 +160,7 @@ class Client(object):
         # download uses shutil.copyfileobj to download, which copies
         # the data in chunks
         o = open(file_to_be_downloaded, 'wb')
-        return shutil.copyfileobj(response.raw, o)
+        return shutil.copyfileobj(response.data, o)
 
     def move(self, src_path, dst_path):
         # check destination folder for / at end
