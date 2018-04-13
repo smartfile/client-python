@@ -148,7 +148,7 @@ class Client(object):
         arg = (filename, fileobj)
         return self.post('/path/data/', file=arg)
 
-    def download(self, file_to_be_downloaded, perform_download=True):
+    def download(self, file_to_be_downloaded, perform_download=True, download_to_path=None):
         """ file_to_be_downloaded is a file-like object that has already
         been uploaded, you cannot download folders """
         response = self.get(
@@ -156,10 +156,11 @@ class Client(object):
         if not perform_download:
             # The caller can decide how to process the download of the data
             return response
-
+        if not download_to_path:
+            download_to_path = file_to_be_downloaded.split("/")[-1]
         # download uses shutil.copyfileobj to download, which copies
         # the data in chunks
-        o = open(file_to_be_downloaded, 'wb')
+        o = open(download_to_path, 'wb')
         return shutil.copyfileobj(response.raw, o)
 
     def move(self, src_path, dst_path):
